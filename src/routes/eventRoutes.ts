@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { EventRepo } from "../repos/eventsRepo";
+import { EventRepo } from "../repos/eventRepo";
 import upload from "../middleware/upload";
+import { fileToBase64 } from "../middleware/filetobase64converter";
 
 const router = Router();
 
 // Create Event
-router.post("/add", upload.single("file"), async (req, res) => {
+router.post("/add", upload.single("banner"), async (req, res) => {
+  console.log("Body:", req.body);
+  console.log("File:", req.file);
   try {
     const {
       eventName,
@@ -16,8 +19,16 @@ router.post("/add", upload.single("file"), async (req, res) => {
       availableTickets,
       preRequisites,
       registrationDetails,
-      status,
     } = req.body;
+
+    let { status } = req.body;
+    if (status === undefined || status === null || status === "") {
+      status = 1;
+    }
+
+    const parsedPreReqs = Array.isArray(preRequisites)
+      ? preRequisites
+      : JSON.parse(preRequisites || "[]");
 
     const filePath = req.file ? req.file.path : "";
 
@@ -28,7 +39,7 @@ router.post("/add", upload.single("file"), async (req, res) => {
       description,
       ticketPrice,
       availableTickets,
-      preRequisites: JSON.parse(preRequisites || "[]"),
+      preRequisites: parsedPreReqs,
       registrationDetails,
       filePath,
       status,
@@ -76,11 +87,20 @@ router.delete("/delete/:id", async (req, res) => {
   }
 });
 
-//  Get All Events
+// Get All Events
 router.get("/", async (req, res) => {
   try {
     const events = await EventRepo.getAllEvents();
-    res.json(events);
+
+    const updatedEvents = events.map((event) => {
+      const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+      return {
+        ...(event.toObject?.() ?? event), // handle Mongoose or plain object
+        banner: base64File,
+      };
+    });
+
+    res.json(updatedEvents);
   } catch (err) {
     console.error("Error fetching events:", err);
     res.status(500).json({ error: "Failed to fetch events" });
@@ -92,10 +112,17 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const event = await EventRepo.getEventById(id);
+
     if (!event) {
       return res.status(404).json({ error: "Event not found" });
     }
-    res.json(event);
+
+    const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+
+    res.json({
+      ...(event.toObject?.() ?? event),
+      banner: base64File,
+    });
   } catch (err) {
     console.error("Error fetching event:", err);
     res.status(500).json({ error: "Failed to fetch event" });
