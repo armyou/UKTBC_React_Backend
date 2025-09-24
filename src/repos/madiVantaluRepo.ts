@@ -21,4 +21,7 @@ export class MadiVantaluRepo {
   static async delete(id: string) {
     return MadiVantaluModel.findByIdAndDelete(id);
   }
+  static async getLatestMadivantalu() {
+    return MadiVantaluModel.find().sort({ createdAt: -1 }).limit(3);
+  }
 }

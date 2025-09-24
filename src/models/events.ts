@@ -22,7 +22,7 @@ const EventSchema = new Schema<eventDocument>(
     preRequisites: [{ type: String, required: true }],
     registrationDetails: { type: String, required: true },
     filePath: { type: String, required: true },
-    status: { type: String, required: true },
+    status: { type: String, required: true, default: "1" },
   },
   { timestamps: true }
 );

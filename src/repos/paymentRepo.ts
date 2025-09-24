@@ -51,17 +51,18 @@ export const updatePaymentStatus = async (
 
 // PayPal payment block start
 
-export const PaymentRepo = {
-  async createPayment(data: Partial<PaymentDocument>) {
-    const payment = new Payment(data);
-    return await payment.save();
-  },
+export const createPayment = async (data: Partial<PaymentDocument>) => {
+  const payment = new Payment(data);
+  return await payment.save();
+};
 
-  async updatePayment(id: string, data: Partial<PaymentDocument>) {
-    return await Payment.findByIdAndUpdate(id, data, { new: true });
-  },
-
-  async findByPaypalOrder(orderId: string) {
-    return await Payment.findOne({ paypalOrderId: orderId });
-  },
+export const updatePaypalOrder = async (
+  paypalOrderId: string,
+  status: string
+) => {
+  return await Payment.findOneAndUpdate(
+    { paypalOrderId },
+    { status },
+    { new: true }
+  );
 };

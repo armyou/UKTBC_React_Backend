@@ -16,7 +16,7 @@ const PurohitSchema = new Schema<purohitDocument>(
     email: { type: String, required: true },
     familyName: { type: String, required: true },
     filePath: { type: String, required: true },
-    status: { type: String, required: true },
+    status: { type: String, required: true, default: "1" },
   },
   { timestamps: true }
 );
