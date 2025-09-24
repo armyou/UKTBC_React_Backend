@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { PurohitRepo } from "../repos/purohitRepo";
 import upload from "../middleware/upload";
+import fs from "fs/promises";
+import path from "path";
+import { fileToBase64 } from "../middleware/filetobase64converter";
 
 const router = Router();
 
 // Add Purohit
-router.post("/add", upload.single("file"), async (req, res) => {
+router.post("/add", upload.single("filePath"), async (req, res) => {
   try {
     const { fullName, serviceLocations, mobile, email, familyName, status } =
       req.body;
@@ -32,11 +35,19 @@ router.post("/add", upload.single("file"), async (req, res) => {
 });
 
 // Update Purohit
-router.put("/update/:id", upload.single("file"), async (req, res) => {
+router.put("/update/:id", upload.single("filePath"), async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Fetch existing Purohit
+    const existingPurohit = await PurohitRepo.getById(id);
+    if (!existingPurohit) {
+      return res.status(404).json({ error: "Purohit not found" });
+    }
+
     const updateData: any = { ...req.body };
 
+    // Normalize serviceLocations
     if (updateData.serviceLocations) {
       updateData.serviceLocations = Array.isArray(updateData.serviceLocations)
         ? updateData.serviceLocations
@@ -44,10 +55,25 @@ router.put("/update/:id", upload.single("file"), async (req, res) => {
     }
 
     if (req.file) {
+      // Delete old file if it exists
+      if (existingPurohit.filePath) {
+        const oldFilePath = path.join(process.cwd(), existingPurohit.filePath);
+        try {
+          await fs.unlink(oldFilePath);
+          console.log("✅ Deleted old file:", oldFilePath);
+        } catch (err: any) {
+          if (err.code !== "ENOENT") {
+            console.error("❌ Failed to delete old file:", err);
+          }
+        }
+      }
+
+      // Save new file path
       updateData.filePath = req.file.path;
     }
 
     const purohit = await PurohitRepo.update(id, updateData);
+
     res.json({ message: "Purohit updated successfully", purohit });
   } catch (err) {
     console.error("Error updating purohit:", err);
@@ -59,8 +85,36 @@ router.put("/update/:id", upload.single("file"), async (req, res) => {
 router.delete("/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Fetch Purohit first
+    const purohit = await PurohitRepo.getById(id);
+    if (!purohit) {
+      return res.status(404).json({ error: "Purohit not found" });
+    }
+
+    // Delete image/file if exists
+    if (purohit.filePath) {
+      const filePath = path.join(process.cwd(), purohit.filePath);
+      try {
+        await fs.unlink(filePath);
+        console.log("✅ Deleted file:", filePath);
+      } catch (err: any) {
+        if (err.code === "ENOENT") {
+          console.warn("⚠️ File already missing, skipping:", filePath);
+        } else {
+          console.error("❌ Failed to delete file:", err);
+        }
+      }
+    }
+
+    // Delete DB record
     await PurohitRepo.delete(id);
-    res.json({ message: "Purohit deleted successfully" });
+
+    res.json({
+      message: purohit.filePath
+        ? "Purohit and file deleted successfully"
+        : "Purohit deleted successfully (no file found)",
+    });
   } catch (err) {
     console.error("Error deleting purohit:", err);
     res.status(500).json({ error: "Failed to delete purohit" });
@@ -71,7 +125,14 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const list = await PurohitRepo.getAll();
-    res.json(list);
+    const updatedlist = list.map((item) => {
+      const base64File = item.filePath ? fileToBase64(item.filePath) : null;
+      return {
+        ...(item.toObject?.() ?? item), // handle Mongoose or plain object
+        filePath: base64File,
+      };
+    });
+    res.json(updatedlist);
   } catch (err) {
     console.error("Error fetching purohits:", err);
     res.status(500).json({ error: "Failed to fetch purohit list" });

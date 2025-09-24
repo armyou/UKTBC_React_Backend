@@ -12,7 +12,7 @@ const MadiVantaluSchema = new Schema<madiVantaluDocument>(
     serviceLocations: [{ type: String, required: true }],
     mobile: { type: String, required: true },
     filePath: { type: String, required: true },
-    status: { type: String, required: true },
+    status: { type: String, required: true, default: "1" },
   },
   { timestamps: true }
 );

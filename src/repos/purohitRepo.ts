@@ -21,4 +21,7 @@ export class PurohitRepo {
   static async delete(id: string) {
     return PurohitModel.findByIdAndDelete(id);
   }
+  static async getLatestPurohit() {
+    return PurohitModel.find().sort({ createdAt: -1 }).limit(3);
+  }
 }

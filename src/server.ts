@@ -11,6 +11,9 @@ import resourceRoutes from "./routes/resourceRoutes";
 import vipravaniRoutes from "./routes/vipravaniRoutes";
 import purohitRoutes from "./routes/purohitRoutes";
 import madiVantaluRoutes from "./routes/madivantaluRoutes";
+import dashboardRoutes from "./routes/getDashboardData";
+import servicesRoutes from "./routes/getServices";
+import resourcesRoutes from "./routes/getResources";
 import morgan from "morgan";
 
 dotenv.config();
@@ -44,7 +47,9 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/vipravani", vipravaniRoutes);
 app.use("/api/purohit", purohitRoutes);
 app.use("/api/madiVantalu", madiVantaluRoutes);
-
+app.use("/api/web/dashboardData", dashboardRoutes);
+app.use("/api/web/services", servicesRoutes);
+app.use("/api/web/resources", resourcesRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})

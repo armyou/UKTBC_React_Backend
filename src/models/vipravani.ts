@@ -8,7 +8,7 @@ const VipravaniSchema = new Schema<vipravaniDocument>(
   {
     title: { type: String, required: true },
     filePath: { type: String, required: true },
-    status: { type: String, required: true },
+    status: { type: String, required: true, default: "1" },
   },
   { timestamps: true }
 );

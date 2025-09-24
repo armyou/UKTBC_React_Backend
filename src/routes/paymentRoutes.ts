@@ -1,13 +1,22 @@
 import { Router, Request, Response } from "express";
 import Stripe from "stripe";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import config from "../config";
-import { savePayment, updatePaymentStatus } from "../repos/paymentRepo";
-import { PaymentRepo } from "../repos/paymentRepo";
+import {
+  savePayment,
+  updatePaymentStatus,
+  createPayment,
+  updatePaypalOrder,
+} from "../repos/paymentRepo";
 import Payment from "../models/payments";
+import nodemailer from "nodemailer";
+import { emailService } from "../services/emailService";
+
+const checkoutNodeJssdk: any = require("@paypal/checkout-server-sdk");
+
 const router = Router();
 
 const stripe = new Stripe(config.stripeSecretKey, {});
+const { paypalClientId, paypalClientSecret, paypalEnv } = config;
 
 // ______________________Stripe Payment Block Start________________________\\
 /**
@@ -101,6 +110,21 @@ router.post(
         paymentIntent.status
       );
 
+      // Send email receipt if payment is successful
+      if (paymentIntent.status === "succeeded" && updatedPayment) {
+        try {
+          await emailService.initializeCredentials(
+            undefined,
+            updatedPayment._id?.toString()
+          );
+          await emailService.sendDonationReceipt(updatedPayment);
+          console.log("Donation receipt email sent successfully");
+        } catch (emailError) {
+          console.error("Error sending donation receipt email:", emailError);
+          // Don't fail the payment confirmation if email fails
+        }
+      }
+
       // Send response back
       res.status(200).json({ payment: updatedPayment });
     } catch (err: any) {
@@ -169,6 +193,22 @@ router.get(
       const session = await stripe.checkout.sessions.retrieve(
         req.params.sessionId
       );
+      const updatedPayment = await updatePaymentStatus(
+        session.id,
+        session.payment_status
+      );
+
+      // Send email receipt if payment is successful
+      if (session.payment_status === "paid" && updatedPayment) {
+        try {
+          await emailService.initializeCredentials(session.id, undefined);
+          await emailService.sendDonationReceipt(updatedPayment);
+          console.log("Donation receipt email sent successfully");
+        } catch (emailError) {
+          console.error("Error sending donation receipt email:", emailError);
+          // Don't fail the payment status check if email fails
+        }
+      }
 
       res.status(200).json({ status: session.payment_status });
     } catch (err: any) {
@@ -184,35 +224,43 @@ router.get(
 router.post(
   "/stripe/update-payment-status",
   async (req: Request, res: Response) => {
+    console.log("🔥 /stripe/update-payment-status called");
     try {
-      const { sessionId, status, paymentId } = req.body;
+      console.log("Request body:", req.body);
+
+      const { sessionId, status, paymentId, senderEmail } = req.body;
+      console.log("Extracted values:", {
+        sessionId,
+        status,
+        paymentId,
+        senderEmail,
+      });
 
       let updatedPayment;
 
       if (paymentId) {
-        // If paymentId is provided, update by document ID (preferred)
+        console.log(`Looking for payment by ID: ${paymentId}`);
         updatedPayment = await Payment.findByIdAndUpdate(
           paymentId,
-          {
-            status: status,
-            stripeSessionId: sessionId, // Update stripeSessionId with the actual session ID
-          },
-          { new: true }
-        );
-      } else {
-        updatedPayment = await Payment.findOneAndUpdate(
-          {
-            $or: [{ stripeSessionId: sessionId }],
-          },
           {
             status: status,
             stripeSessionId: sessionId,
           },
           { new: true }
         );
+        console.log("Payment updated by ID:", updatedPayment?._id);
+      } else {
+        console.log(`Looking for payment by sessionId: ${sessionId}`);
+        updatedPayment = await Payment.findOneAndUpdate(
+          { stripeSessionId: sessionId },
+          { status: status, stripeSessionId: sessionId },
+          { new: true }
+        );
+        console.log("Payment updated by sessionId:", updatedPayment?._id);
       }
 
       if (!updatedPayment) {
+        console.warn("Payment not found!");
         return res.status(404).json({
           error: "Payment not found",
           sessionId,
@@ -220,11 +268,39 @@ router.post(
         });
       }
 
+      console.log(`Payment status is now: ${updatedPayment.status}`);
+
+      // Send email receipt if payment is successful
+      if (
+        status === "paid" ||
+        status === "succeeded" ||
+        status === "completed"
+      ) {
+        console.log("Payment is successful, preparing to send email...");
+
+        try {
+          console.log("Initializing email service...");
+          await emailService.initializeCredentials(sessionId, paymentId);
+          console.log("Email service initialized successfully");
+
+          console.log(`Sending donation receipt to: ${senderEmail}`);
+          await emailService.sendDonationReceipt(updatedPayment, senderEmail);
+          console.log("Donation receipt email sent successfully ✅");
+        } catch (emailError) {
+          console.error("Error sending donation receipt email:", emailError);
+          // Don't fail the payment status update if email fails
+        }
+      } else {
+        console.log("Payment not successful, skipping email sending.");
+      }
+
+      console.log("Sending response back to client...");
       res.status(200).json({
         success: true,
         message: "Payment status updated successfully",
         payment: updatedPayment,
       });
+      console.log("Response sent ✅");
     } catch (err: any) {
       console.error("ERROR updating payment status:", err.message);
       res.status(500).json({ error: err.message });
@@ -235,101 +311,121 @@ router.post(
 // _______________________Stripe Payment Block End___________________________\\
 
 // _______________________PayPal Payment Block Start____________________________\\
-// router.post("/paypal/create-order", async (req, res) => {
-//   try {
-//     console.log("STAGE 1: Received request to /paypal/create-order");
-//     console.log("STAGE 2: Request body:", req.body);
+// src/routes/paypalRoutes.ts
 
-//     const { amount, donor } = req.body;
-//     console.log("STAGE 3: Extracted data:", { amount, donor });
+function paypalClient() {
+  const env =
+    paypalEnv === "sandbox"
+      ? new checkoutNodeJssdk.core.SandboxEnvironment(
+          paypalClientId.trim()!,
+          paypalClientSecret.trim()!
+        )
+      : new checkoutNodeJssdk.core.LiveEnvironment(
+          paypalClientId.trim()!,
+          paypalClientSecret.trim()!
+        );
+  console.log("PayPal ClientId:", paypalClientId);
+  console.log("PayPal Secret:", paypalClientSecret);
+  console.log("PayPal Env:", paypalEnv);
+  return new checkoutNodeJssdk.core.PayPalHttpClient(env);
+}
 
-//     // Get PayPal access token
-//     console.log("STAGE 4: Getting PayPal access token...");
-//     const auth = Buffer.from(
-//       `${config.paypalClientId}:${config.paypalClientSecret}`
-//     ).toString("base64");
+// Create PayPal Order + Save Payment
+router.post("/paypal/create-order", async (req, res) => {
+  try {
+    console.log(req.body);
+    const { amount, donor } = req.body;
 
-//     const tokenRes = await fetch(`${config.frontendUrl}/v1/oauth2/token`, {
-//       method: "POST",
-//       headers: {
-//         Authorization: `Basic ${auth}`,
-//         "Content-Type": "application/x-www-form-urlencoded",
-//       },
-//       body: "grant_type=client_credentials",
-//     });
-//     const tokenData = await tokenRes.json();
-//     const accessToken = tokenData.access_token;
-//     console.log("STAGE 5: PayPal access token obtained");
+    const {
+      title = "mr",
+      firstName,
+      lastName,
+      email,
+      mobile,
+      corpDonation,
+      companyName,
+      postCode,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      city,
+      country,
+      paymentReference,
+      donationType = "I'm donating my own money",
+      giftAid = "no",
+      paymentType = "web/paypal",
+      status = "CREATED",
+    } = donor;
 
-//     // Create PayPal order
-//     console.log("STAGE 6: Creating PayPal order...");
-//     const orderRes = await fetch(`${config.frontendUrl}/v2/checkout/orders`, {
-//       method: "POST",
-//       headers: {
-//         Authorization: `Bearer ${accessToken}`,
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({
-//         intent: "CAPTURE",
-//         purchase_units: [
-//           {
-//             amount: {
-//               currency_code: "GBP",
-//               value: amount.toString(),
-//             },
-//             description: `Donation from ${donor.firstName} ${donor.lastName}`,
-//           },
-//         ],
-//         application_context: {
-//           return_url: `${config.frontendUrl}/donate-now?success=true&order_id={ORDER_ID}`,
-//           cancel_url: `${config.frontendUrl}/donate-now?canceled=true`,
-//         },
-//       }),
-//     });
-//     const orderData = await orderRes.json();
-//     console.log("STAGE 7: PayPal order created:", orderData.id);
+    // Create PayPal order
+    const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "GBP",
+            value: amount.toString(),
+          },
+        },
+      ],
+    });
 
-//     // Save payment to database
-//     console.log("STAGE 8: Saving payment to database...");
-//     const savedPayment = await savePayment({
-//       title: "mr",
-//       firstName: donor.firstName,
-//       lastName: donor.lastName,
-//       email: donor.email,
-//       mobile: donor.mobile,
-//       corpDonation: donor.corpDonation,
-//       companyName: donor.companyName,
-//       postCode: donor.postCode,
-//       addressLine1: donor.addressLine1,
-//       addressLine2: donor.addressLine2,
-//       addressLine3: donor.addressLine3,
-//       city: donor.city,
-//       country: donor.country,
-//       amount: amount,
-//       paymentReference: donor.paymentReference,
-//       donationType: donor.donationType,
-//       giftAid: donor.giftAidClaim,
-//       paymentType: "web/paypal",
-//       paypalOrderId: orderData.id,
-//       status: "pending",
-//     });
-//     console.log(
-//       "STAGE 9: Payment saved to database with ID:",
-//       savedPayment._id
-//     );
+    const order = await paypalClient().execute(request);
 
-//     // Send response back
-//     console.log("STAGE 10: Sending response to frontend");
-//     res.status(200).json({
-//       orderId: orderData.id,
-//       approvalUrl: orderData.links.find((config.paypalBaseUrl) => config.paypalBaseUrl === "approve").href,
-//       paymentId: savedPayment._id,
-//     });
-//     console.log("STAGE 11: Response sent successfully");
-//   } catch (err: any) {
-//     console.error("ERROR in /paypal/create-order:", err.message);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
+    // Save payment to DB
+    await savePayment({
+      title,
+      firstName,
+      lastName,
+      email,
+      mobile,
+      corpDonation,
+      companyName,
+      postCode,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      city,
+      country,
+      amount,
+      paymentReference,
+      donationType,
+      giftAid,
+      paymentType,
+      status,
+      paypalOrderId: order.result.id,
+    });
+
+    const approvalUrl = order.result.links.find(
+      (link: any) => link.rel === "approve"
+    )?.href;
+
+    res.json({ id: order.result.id, approvalUrl });
+  } catch (err: any) {
+    console.error("PayPal create-order error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Capture PayPal Order + Update Payment
+router.post("/paypal/capture-order/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const request = new checkoutNodeJssdk.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+
+    const capture = await paypalClient().execute(request);
+
+    await updatePaypalOrder(orderId, "COMPLETED");
+
+    res.json(capture.result);
+  } catch (err: any) {
+    console.error("PayPal capture-order error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

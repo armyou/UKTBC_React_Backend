@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface PaymentDocument extends Document {
-  provider: "stripe" | "paypal"; // NEW
   title: string;
   firstName: string;
   lastName: string;
@@ -27,8 +26,6 @@ export interface PaymentDocument extends Document {
 
 const PaymentSchema = new Schema<PaymentDocument>(
   {
-    provider: { type: String, enum: ["stripe", "paypal"], required: true },
-
     title: { type: String, required: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -58,7 +55,7 @@ const PaymentSchema = new Schema<PaymentDocument>(
     stripeSessionId: { type: String, required: false, default: "" },
     paypalOrderId: { type: String, required: false, default: "" },
 
-    status: { type: String, required: true },
+    status: { type: String, required: true, default: "1" },
   },
   { timestamps: true }
 );

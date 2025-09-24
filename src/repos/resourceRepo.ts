@@ -21,4 +21,22 @@ export class ResourceRepo {
   static async deleteResource(id: string) {
     return ResourcesModel.findByIdAndDelete(id);
   }
+  static async getLatestPanchangam(p0: {
+    resourceType: string;
+    sortBy: { createdAt: number };
+    limit: number;
+  }) {
+    return ResourcesModel.find({ resourceType: "Panchangam" })
+      .sort({ createdAt: -1 })
+      .limit(3);
+  }
+  static async getLatestReports(p0: {
+    resourceType: string;
+    sortBy: { createdAt: number };
+    limit: number;
+  }) {
+    return ResourcesModel.find({ resourceType: "Report" })
+      .sort({ createdAt: -1 })
+      .limit(3);
+  }
 }
