@@ -1,4 +1,4 @@
-import Admin, { AdminDocument } from "../models/admin";
+import Admin, { AdminDocument } from "../models/admin.ts";
 
 export const AdminRepo = {
   async createAdmin(data: Partial<AdminDocument>) {

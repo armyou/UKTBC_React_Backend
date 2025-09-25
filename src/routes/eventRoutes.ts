@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { EventRepo } from "../repos/eventRepo";
-import upload from "../middleware/upload";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { EventRepo } from "../repos/eventRepo.ts";
+import upload from "../middleware/upload.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 import fs from "fs/promises";
 import path from "path";
 

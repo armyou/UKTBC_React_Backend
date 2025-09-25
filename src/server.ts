@@ -1,19 +1,20 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import config from "../src/config";
-import paymentRoutes from "./routes/paymentRoutes";
+import config from "../src/config.ts";
+import paymentRoutes from "./routes/paymentRoutes.ts";
 import dotenv from "dotenv";
-import adminRoutes from "./routes/adminRoutes";
-import eventsRoutes from "./routes/eventRoutes";
-import projectsRoutes from "./routes/projectRoutes";
-import resourceRoutes from "./routes/resourceRoutes";
-import vipravaniRoutes from "./routes/vipravaniRoutes";
-import purohitRoutes from "./routes/purohitRoutes";
-import madiVantaluRoutes from "./routes/madivantaluRoutes";
-import dashboardRoutes from "./routes/getDashboardData";
-import servicesRoutes from "./routes/getServices";
-import resourcesRoutes from "./routes/getResources";
+import adminRoutes from "./routes/adminRoutes.ts";
+import eventsRoutes from "./routes/eventRoutes.ts";
+import projectsRoutes from "./routes/projectRoutes.ts";
+import resourceRoutes from "./routes/resourceRoutes.ts";
+import vipravaniRoutes from "./routes/vipravaniRoutes.ts";
+import purohitRoutes from "./routes/purohitRoutes.ts";
+import madiVantaluRoutes from "./routes/madivantaluRoutes.ts";
+import dashboardRoutes from "./routes/getDashboardData.ts";
+import servicesRoutes from "./routes/getServices.ts";
+import resourcesRoutes from "./routes/getResources.ts";
+import footerCounterRoutes from "./routes/footerCounter.ts";
 import morgan from "morgan";
 
 dotenv.config();
@@ -50,6 +51,7 @@ app.use("/api/madiVantalu", madiVantaluRoutes);
 app.use("/api/web/dashboardData", dashboardRoutes);
 app.use("/api/web/services", servicesRoutes);
 app.use("/api/web/resources", resourcesRoutes);
+app.use("/api/footer", footerCounterRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})

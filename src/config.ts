@@ -18,6 +18,12 @@ export const config = {
   smtpPassword: process.env.SMTP_PASSWORD,
   fromEmail: process.env.FROM_EMAIL || "donate@uktbc.org",
   fromName: process.env.FROM_NAME || "UK Telugu Brahmin Community",
+  SMTP_SERVER: process.env.SMTP_SERVER,
+  SMTP_PORT: process.env.SMTP_PORT,
+  OAUTH_CLIENT_ID: process.env.OAUTH_CLIENT_ID,
+  OAUTH_CLIENT_SECRET: process.env.OAUTH_CLIENT_SECRET,
+  OAUTH_APP_ID_URI: process.env.OAUTH_APP_ID_URI,
+  SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
 };
 
 export default config;

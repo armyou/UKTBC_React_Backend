@@ -1,4 +1,4 @@
-import Payment, { PaymentDocument } from "../models/payments";
+import Payment, { PaymentDocument } from "../models/payments.ts";
 import mongoose from "mongoose";
 
 // stripe payment block start

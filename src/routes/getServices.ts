@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { fileToBase64 } from "../middleware/filetobase64converter";
-import { MadiVantaluRepo } from "../repos/madiVantaluRepo";
-import { PurohitRepo } from "../repos/purohitRepo";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
+import { MadiVantaluRepo } from "../repos/madiVantaluRepo.ts";
+import { PurohitRepo } from "../repos/purohitRepo.ts";
 
 const router = Router();
 

@@ -1,15 +1,15 @@
 import { Router, Request, Response } from "express";
 import Stripe from "stripe";
-import config from "../config";
+import config from "../config.ts";
 import {
   savePayment,
   updatePaymentStatus,
   createPayment,
   updatePaypalOrder,
-} from "../repos/paymentRepo";
-import Payment from "../models/payments";
+} from "../repos/paymentRepo.ts";
+import Payment from "../models/payments.ts";
 import nodemailer from "nodemailer";
-import { emailService } from "../services/emailService";
+import { emailService } from "../services/emailService.ts";
 
 const checkoutNodeJssdk: any = require("@paypal/checkout-server-sdk");
 

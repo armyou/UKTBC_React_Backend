@@ -1,4 +1,4 @@
-import VipravaniModel, { vipravaniDocument } from "../models/vipravani";
+import VipravaniModel, { vipravaniDocument } from "../models/vipravani.ts";
 
 export class VipravaniRepo {
   static async create(data: Partial<vipravaniDocument>) {

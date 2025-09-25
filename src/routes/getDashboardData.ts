@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { EventRepo } from "../repos/eventRepo";
-import { ResourceRepo } from "../repos/resourceRepo";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { EventRepo } from "../repos/eventRepo.ts";
+import { ResourceRepo } from "../repos/resourceRepo.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 
 const router = Router();
 

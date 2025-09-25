@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { PurohitRepo } from "../repos/purohitRepo";
-import upload from "../middleware/upload";
+import { PurohitRepo } from "../repos/purohitRepo.ts";
+import upload from "../middleware/upload.ts";
 import fs from "fs/promises";
 import path from "path";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 
 const router = Router();
 

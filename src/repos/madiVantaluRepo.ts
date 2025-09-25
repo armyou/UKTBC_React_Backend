@@ -1,4 +1,6 @@
-import MadiVantaluModel, { madiVantaluDocument } from "../models/madiVantalu";
+import MadiVantaluModel, {
+  madiVantaluDocument,
+} from "../models/madiVantalu.ts";
 
 export class MadiVantaluRepo {
   static async create(data: Partial<madiVantaluDocument>) {

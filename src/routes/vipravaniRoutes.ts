@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { VipravaniRepo } from "../repos/vipravaniRepo";
-import upload from "../middleware/pdfUpload";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { VipravaniRepo } from "../repos/vipravaniRepo.ts";
+import upload from "../middleware/pdfUpload.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 import fs from "fs/promises";
 import path from "path";
 

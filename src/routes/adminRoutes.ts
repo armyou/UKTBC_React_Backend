@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AdminRepo } from "../repos/adminRepo";
+import { AdminRepo } from "../repos/adminRepo.ts";
 import jwt from "jsonwebtoken";
 
 const router = Router();

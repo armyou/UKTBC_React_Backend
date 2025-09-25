@@ -1,16 +1,20 @@
 import nodemailer from "nodemailer";
-import Payment from "../models/payments";
-import { generateDonationReceiptPDF } from "../services/pdfService";
+import Payment from "../models/payments.ts";
+import { generateDonationReceiptPDF } from "../services/pdfService.ts";
 import config from "../config";
 import path from "path";
 
 interface EmailCredentials {
-  smtpHost: string;
-  smtpPort: number;
-  smtpUser: string;
-  smtpPassword: string;
-  fromEmail: string;
-  fromName: string;
+  host: string;
+  port: string;
+  type: string;
+  clientId: string;
+  clientSecret: string;
+
+  // smtpUser: string;
+  // smtpPassword: string;
+  // fromEmail: string;
+  // fromName: string;
 }
 
 export class EmailService {
@@ -51,14 +55,17 @@ export class EmailService {
         );
       }
 
-      this.credentials = {
-        smtpHost: config.smtpHost,
-        smtpPort: config.smtpPort,
-        smtpUser: config.smtpUser,
-        smtpPassword: config.smtpPassword,
-        fromEmail: config.fromEmail,
-        fromName: config.fromName,
+      const credentials: EmailCredentials = {
+        host: config.SMTP_HOST,
+        port: Number(config.SMTP_PORT),
+        type: "OAuth2",
+        user: config.SMTP_FROM_EMAIL,
+        clientId: config.OAUTH_CLIENT_ID,
+        clientSecret: config.OAUTH_CLIENT_SECRET,
+        refreshToken: config.OAUTH_REFRESH_TOKEN, // optional but common
+        accessToken: config.OAUTH_ACCESS_TOKEN, // if you already acquired it
       };
+
       console.log("this.credentials: ", this.credentials);
       console.log("SMTP credentials loaded from config");
 
@@ -66,12 +73,16 @@ export class EmailService {
         throw new Error("Email credentials not initialized");
       }
       this.transporter = nodemailer.createTransport({
-        host: this.credentials.smtpHost,
-        port: this.credentials.smtpPort,
-        secure: false,
+        host: credentials.host,
+        port: credentials.port,
+        secure: false, // 587 uses TLS, not SSL
         auth: {
-          user: this.credentials.smtpUser,
-          pass: this.credentials.smtpPassword,
+          type: credentials.type, // "OAuth2"
+          user: credentials.user,
+          clientId: credentials.clientId,
+          clientSecret: credentials.clientSecret,
+          refreshToken: credentials.refreshToken, // if using long-lived tokens
+          accessToken: credentials.accessToken, // if already acquired
         },
         tls: {
           ciphers: "TLSv1.2",

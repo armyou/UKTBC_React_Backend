@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { ProjectRepo } from "../repos/projectRepo";
-import upload from "../middleware/upload";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { ProjectRepo } from "../repos/projectRepo.ts";
+import upload from "../middleware/upload.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 import fs from "fs/promises";
 import path from "path";
 

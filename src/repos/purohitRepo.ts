@@ -1,4 +1,4 @@
-import PurohitModel, { purohitDocument } from "../models/purohit";
+import PurohitModel, { purohitDocument } from "../models/purohit.ts";
 
 export class PurohitRepo {
   static async create(data: Partial<purohitDocument>) {

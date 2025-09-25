@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { ResourceRepo } from "../repos/resourceRepo";
-import upload from "../middleware/pdfUpload";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { ResourceRepo } from "../repos/resourceRepo.ts";
+import upload from "../middleware/pdfUpload.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 import fs from "fs/promises";
 import path from "path";
 
