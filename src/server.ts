@@ -1,31 +1,93 @@
-import express from 'express';
-import mongoose from 'mongoose';
+import express from "express";
+import mongoose from "mongoose";
 import cors from "cors";
-import userRoutes from './routes/user';
+import config from "../src/config.ts";
+import paymentRoutes from "./routes/paymentRoutes.ts";
 import dotenv from "dotenv";
-import paymentRoutes from "./routes/payment";
+import adminRoutes from "./routes/adminRoutes.ts";
+import eventsRoutes from "./routes/eventRoutes.ts";
+import projectsRoutes from "./routes/projectRoutes.ts";
+import resourceRoutes from "./routes/resourceRoutes.ts";
+import vipravaniRoutes from "./routes/vipravaniRoutes.ts";
+import purohitRoutes from "./routes/purohitRoutes.ts";
+import madiVantaluRoutes from "./routes/madivantaluRoutes.ts";
+import dashboardRoutes from "./routes/getDashboardData.ts";
+import servicesRoutes from "./routes/getServices.ts";
+import resourcesRoutes from "./routes/getResources.ts";
+import footerCounterRoutes from "./routes/footerCounter.ts";
+import morgan from "morgan";
+
 dotenv.config();
 
 const app = express();
+
 const PORT = process.env.PORT || 3040;
 
 // Middlewares
 app.use(cors());
-
 app.use(express.json());
+app.use(morgan(":method :url :status :response-time ms"));
 
-// Example Route
-app.get('/', (req, res) => {
-    res.send('Hello World with TypeScript!');
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Health check route
+app.get("/", (req, res) => {
+  res.json({
+    message: "UKTBC API Server",
+    status: "running",
+    timestamp: new Date().toISOString(),
+  });
 });
-app.use('/users', userRoutes);
-app.use("/api", paymentRoutes);
 
-// MongoDB Connection (Example)
-mongoose.connect('mongodb://localhost:27017/uktbc')
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.log(err));
+// API Routes
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/events", eventsRoutes);
+app.use("/api/projects", projectsRoutes);
+app.use("/api/resources", resourceRoutes);
+app.use("/api/vipravani", vipravaniRoutes);
+app.use("/api/purohit", purohitRoutes);
+app.use("/api/madiVantalu", madiVantaluRoutes);
+app.use("/api/web/dashboardData", dashboardRoutes);
+app.use("/api/web/services", servicesRoutes);
+app.use("/api/web/resources", resourcesRoutes);
+app.use("/api/footer", footerCounterRoutes);
+// MongoDB Connection
+mongoose
+  .connect(config.mongoUri, {})
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
+  });
+
+// Error handling middleware
+app.use(
+  (
+    err: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    console.error("Error:", err);
+    res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+);
+
+// 404 handler
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Route not found",
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+  });
+});
+
+app.listen(config.port, () => {
+  console.log(` Server is running on port ${config.port}`);
+  console.log(` API Base URL: http://localhost:3003/`);
 });
