@@ -41,5 +41,10 @@ class MadiVantaluRepo {
             return madiVantalu_1.default.findByIdAndDelete(id);
         });
     }
+    static getLatestMadivantalu() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return madiVantalu_1.default.find().sort({ createdAt: -1 }).limit(3);
+        });
+    }
 }
 exports.MadiVantaluRepo = MadiVantaluRepo;

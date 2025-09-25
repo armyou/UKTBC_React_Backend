@@ -17,11 +17,18 @@ exports.config = {
     paypalEnv: process.env.PAYPAL_ENV,
     frontendUrl: process.env.FRONT_END_URL,
     // SMTP Configuration
-    smtpHost: process.env.SMTP_HOST || "smtp-mail.outlook.com",
+    smtpHost: process.env.SMTP_HOST,
     smtpPort: parseInt(process.env.SMTP_PORT || "587"),
-    smtpUser: process.env.SMTP_USER || "",
-    smtpPassword: process.env.SMTP_PASSWORD || "",
+    smtpUser: process.env.SMTP_USER,
+    smtpPassword: process.env.SMTP_PASSWORD,
     fromEmail: process.env.FROM_EMAIL || "donate@uktbc.org",
     fromName: process.env.FROM_NAME || "UK Telugu Brahmin Community",
+    SMTP_SERVER: process.env.SMTP_SERVER,
+    SMTP_PORT: process.env.SMTP_PORT,
+    OAUTH_CLIENT_ID: process.env.OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET: process.env.OAUTH_CLIENT_SECRET,
+    OAUTH_APP_ID_URI: process.env.OAUTH_APP_ID_URI,
+    OAUTH_TENANT_ID: process.env.OAUTH_TENANT_ID,
+    SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
 };
 exports.default = exports.config;

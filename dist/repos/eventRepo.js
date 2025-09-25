@@ -42,5 +42,73 @@ class EventRepo {
             return events_1.default.findByIdAndDelete(id);
         });
     }
+    static getLatestEvents(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ sortBy, limit, convertStartDate, }) {
+            const now = new Date();
+            return events_1.default.aggregate([
+                {
+                    $addFields: {
+                        startDateConverted: { $toDate: "$startDate" }, // convert string to Date
+                    },
+                },
+                {
+                    $addFields: {
+                        diff: { $abs: { $subtract: ["$startDateConverted", now] } }, // now safe
+                    },
+                },
+                { $sort: { diff: 1 } }, // closest to current date first
+                { $limit: limit }, // latest 3 events
+            ]);
+        });
+    }
+    // to get upcoming events
+    static getAllUpcomingEvents() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const now = new Date();
+            return events_1.default.aggregate([
+                {
+                    $addFields: {
+                        startDateConverted: { $toDate: "$startDate" },
+                    },
+                },
+                {
+                    $match: {
+                        startDateConverted: { $gte: now },
+                    },
+                },
+                {
+                    $sort: { startDateConverted: 1 },
+                },
+            ]);
+        });
+    }
+    // to get all past events
+    static getAllPastEvents() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const now = new Date();
+            return events_1.default.aggregate([
+                {
+                    $addFields: {
+                        startDateConverted: { $toDate: "$startDate" },
+                    },
+                },
+                {
+                    $match: {
+                        startDateConverted: { $lt: now },
+                    },
+                },
+                {
+                    $sort: { startDateConverted: -1 },
+                },
+                {
+                    $project: {
+                        eventId: "$_id",
+                        filePath: 1,
+                        _id: 0,
+                    },
+                },
+            ]);
+        });
+    }
 }
 exports.EventRepo = EventRepo;

@@ -14,6 +14,9 @@ import madiVantaluRoutes from "./routes/madivantaluRoutes";
 import dashboardRoutes from "./routes/getDashboardData";
 import servicesRoutes from "./routes/getServices";
 import resourcesRoutes from "./routes/getResources";
+import footerCounterRoutes from "./routes/footerCounter";
+import hrmcRoutes from "./routes/downloadHMRCRoutes";
+import smtpweb from "./routes/smtpweb"
 import morgan from "morgan";
 
 dotenv.config();
@@ -50,6 +53,9 @@ app.use("/api/madiVantalu", madiVantaluRoutes);
 app.use("/api/web/dashboardData", dashboardRoutes);
 app.use("/api/web/services", servicesRoutes);
 app.use("/api/web/resources", resourcesRoutes);
+app.use("/api/footer", footerCounterRoutes);
+app.use("/api/hrmc",hrmcRoutes)
+app.use("/smtpweb",smtpweb);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})

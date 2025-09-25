@@ -3,105 +3,153 @@ import Payment from "../models/payments";
 import { generateDonationReceiptPDF } from "../services/pdfService";
 import config from "../config";
 import path from "path";
+import axios from "axios";
 
 interface EmailCredentials {
-  smtpHost: string;
-  smtpPort: number;
-  smtpUser: string;
-  smtpPassword: string;
-  fromEmail: string;
-  fromName: string;
+  host: string;
+  port: number;
+  type: string;
+  user: string;
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+  accessToken?: string;
 }
 
 export class EmailService {
   private transporter: nodemailer.Transporter | null = null;
   private credentials: EmailCredentials | null = null;
 
+  // ---- Get Access Token (client_credentials flow) ----
+  private async getAccessToken(
+    clientId: string,
+    clientSecret: string,
+    tenantId: string
+  ): Promise<string> {
+    try {
+      const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+      const requestData = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: "https://outlook.office365.com/.default", //  for SMTP
+        grant_type: "client_credentials",
+      });
+
+      const response = await axios.post(tokenUrl, requestData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+
+      return response.data.access_token;
+    } catch (error: any) {
+      console.error("OAuth2 token acquisition failed:", error.message);
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
+      throw new Error("Failed to get OAuth2 access token");
+    }
+  }
+
+  // Method for testing - allows setting credentials and transporter directly
+  setCredentialsAndTransporter(
+    credentials: EmailCredentials,
+    transporter: nodemailer.Transporter
+  ) {
+    this.credentials = credentials;
+    this.transporter = transporter;
+  }
+
   async initializeCredentials(
     sessionId?: string,
     paymentId?: string
   ): Promise<void> {
-    console.log("Initializing email credentials...");
     try {
       let payment;
       if (paymentId) {
-        console.log(`Finding payment by ID: ${paymentId}`);
         payment = await Payment.findById(paymentId);
       } else if (sessionId) {
-        console.log(`Finding payment by sessionId: ${sessionId}`);
         payment = await Payment.findOne({ stripeSessionId: sessionId });
       }
 
       if (!payment) {
-        console.error("Payment not found during email initialization");
         throw new Error("Payment not found");
       }
-      console.log("Payment found:", payment._id);
 
-      if (
-        !config.smtpHost ||
-        !config.smtpPort ||
-        !config.smtpUser ||
-        !config.smtpPassword ||
-        !config.fromEmail ||
-        !config.fromName
-      ) {
-        throw new Error(
-          "One or more email configuration values are missing or undefined"
-        );
-      }
-
-      this.credentials = {
-        smtpHost: config.smtpHost,
-        smtpPort: config.smtpPort,
-        smtpUser: config.smtpUser,
-        smtpPassword: config.smtpPassword,
-        fromEmail: config.fromEmail,
-        fromName: config.fromName,
-      };
-      console.log("this.credentials: ", this.credentials);
-      console.log("SMTP credentials loaded from config");
-
-      if (!this.credentials) {
-        throw new Error("Email credentials not initialized");
-      }
-      this.transporter = nodemailer.createTransport({
-        host: this.credentials.smtpHost,
-        port: this.credentials.smtpPort,
-        secure: false,
-        auth: {
-          user: this.credentials.smtpUser,
-          pass: this.credentials.smtpPassword,
-        },
-        tls: {
-          ciphers: "TLSv1.2",
-          rejectUnauthorized: false,
-        },
-      });
-
-      this.transporter.verify(function (error, success) {
-        console.log("verify block");
-        if (error) {
-          console.log("SMTP connection/auth failed:", error);
-        } else {
-          console.log("Server is ready to take our messages");
-        }
-      });
-
-      console.log("Nodemailer transporter created");
-
-      if (this.transporter) {
-        await this.transporter.verify();
-        console.log("SMTP connection verified successfully");
-      }
+      // Only OAuth2 init
+      await this.initializeOAuth2();
     } catch (error) {
       console.error("Error initializing email credentials:", error);
       throw error;
     }
   }
 
+  // ---- OAuth2 Transporter Setup (only access token) ----
+  private async initializeOAuth2(): Promise<void> {
+    if (
+      !config.OAUTH_CLIENT_ID ||
+      !config.OAUTH_CLIENT_SECRET ||
+      !config.SMTP_FROM_EMAIL ||
+      !config.OAUTH_TENANT_ID
+    ) {
+      throw new Error("OAuth2 configuration missing");
+    }
+
+    const tenantId = config.OAUTH_TENANT_ID;
+
+    // 1. Generate access token
+    const accessToken = await this.getAccessToken(
+      config.OAUTH_CLIENT_ID,
+      config.OAUTH_CLIENT_SECRET,
+      tenantId
+    );
+
+    // 2. Print access token (for debug)
+    console.log(" Access Token acquired:", accessToken);
+
+    // 3. If no access token, stop here
+    if (!accessToken) {
+      throw new Error(" No access token received, aborting email setup");
+    }
+
+    // 4. Continue with credentials and transporter setup
+    this.credentials = {
+      host: "smtp.office365.com",
+      port: 587,
+      type: "OAuth2",
+      user: config.SMTP_FROM_EMAIL,
+      clientId: config.OAUTH_CLIENT_ID,
+      clientSecret: config.OAUTH_CLIENT_SECRET,
+      tenantId: tenantId,
+      accessToken: accessToken,
+    };
+
+    this.transporter = nodemailer.createTransport({
+      host: this.credentials.host,
+      port: this.credentials.port,
+      secure: false,
+      auth: {
+        type: "OAuth2",
+        user: "website@UKTBC.org",
+        clientId: config.OAUTH_CLIENT_ID,
+        clientSecret: config.OAUTH_CLIENT_SECRET,
+        accessToken: accessToken,
+      },
+      tls: {
+        ciphers: "TLSv1.2",
+        rejectUnauthorized: false,
+      },
+    });
+
+    // 5. Verify transporter
+    if (this.transporter) {
+      await this.transporter.verify();
+      console.log(" SMTP transporter verified with OAuth2 (access token only)");
+    }
+  }
+
+  // ---- Send Donation Receipt ----
   async sendDonationReceipt(payment: any, toEmail?: string): Promise<void> {
-    console.log("Starting sendDonationReceipt...");
     try {
       if (!this.transporter) {
         throw new Error("Email service not initialized");
@@ -114,13 +162,9 @@ export class EmailService {
         return;
       }
 
-      console.log("Generating PDF receipt...");
       const pdfBuffer = await generateDonationReceiptPDF(payment);
-      console.log("PDF receipt generated successfully");
-
       const subject = `Donation Receipt - UK Telugu Brahmin Community`;
       const htmlContent = this.generateEmailHTML(payment);
-      console.log("Email HTML content generated");
 
       const logoPath = path.join(
         process.cwd(),
@@ -128,7 +172,7 @@ export class EmailService {
       );
 
       const mailOptions = {
-        from: `"${this.credentials?.fromName}" <${this.credentials?.fromEmail}>`,
+        from: `"UK Telugu Brahmin Community" <${this.credentials?.user}>`,
         to: toEmail || payment.email,
         subject: subject,
         html: htmlContent,
@@ -146,9 +190,8 @@ export class EmailService {
         ],
       };
 
-      console.log(`Sending email to: ${toEmail || payment.email}...`);
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("Donation receipt email sent successfully!");
+      console.log(" Donation receipt email sent!");
       console.log("Message ID:", info.messageId);
     } catch (error) {
       console.error("Error sending donation receipt email:", error);
@@ -156,8 +199,8 @@ export class EmailService {
     }
   }
 
-  private generateEmailHTML(payment: any): string {
-    console.log("Generating email HTML...");
+  // ---- Email Template ----
+  generateEmailHTML(payment: any): string {
     const giftAidAmount =
       payment.giftAid === "yes" ? (payment.amount * 0.25).toFixed(2) : "0.00";
 
