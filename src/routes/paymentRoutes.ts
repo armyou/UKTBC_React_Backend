@@ -8,7 +8,6 @@ import {
   updatePaypalOrder,
 } from "../repos/paymentRepo";
 import Payment from "../models/payments";
-import nodemailer from "nodemailer";
 import { emailService } from "../services/emailService";
 
 const checkoutNodeJssdk: any = require("@paypal/checkout-server-sdk");

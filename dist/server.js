@@ -16,6 +16,10 @@ const resourceRoutes_1 = __importDefault(require("./routes/resourceRoutes"));
 const vipravaniRoutes_1 = __importDefault(require("./routes/vipravaniRoutes"));
 const purohitRoutes_1 = __importDefault(require("./routes/purohitRoutes"));
 const madivantaluRoutes_1 = __importDefault(require("./routes/madivantaluRoutes"));
+const getDashboardData_1 = __importDefault(require("./routes/getDashboardData"));
+const getServices_1 = __importDefault(require("./routes/getServices"));
+const getResources_1 = __importDefault(require("./routes/getResources"));
+const footerCounter_1 = __importDefault(require("./routes/footerCounter"));
 const morgan_1 = __importDefault(require("morgan"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -42,6 +46,10 @@ app.use("/api/resources", resourceRoutes_1.default);
 app.use("/api/vipravani", vipravaniRoutes_1.default);
 app.use("/api/purohit", purohitRoutes_1.default);
 app.use("/api/madiVantalu", madivantaluRoutes_1.default);
+app.use("/api/web/dashboardData", getDashboardData_1.default);
+app.use("/api/web/services", getServices_1.default);
+app.use("/api/web/resources", getResources_1.default);
+app.use("/api/footer", footerCounter_1.default);
 // MongoDB Connection
 mongoose_1.default
     .connect(config_1.default.mongoUri, {})

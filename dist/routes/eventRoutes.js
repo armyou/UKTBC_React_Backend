@@ -16,6 +16,8 @@ const express_1 = require("express");
 const eventRepo_1 = require("../repos/eventRepo");
 const upload_1 = __importDefault(require("../middleware/upload"));
 const filetobase64converter_1 = require("../middleware/filetobase64converter");
+const promises_1 = __importDefault(require("fs/promises"));
+const path_1 = __importDefault(require("path"));
 const router = (0, express_1.Router)();
 // Create Event
 function normalizeToArray(input) {
@@ -70,8 +72,27 @@ router.put("/update/:id", upload_1.default.single("filePath"), (req, res) => __a
     console.log(req.body);
     try {
         const { id } = req.params;
+        // Fetch existing event
+        const existingEvent = yield eventRepo_1.EventRepo.getEventById(id);
+        if (!existingEvent) {
+            return res.status(404).json({ error: "Event not found" });
+        }
         const updateData = Object.assign(Object.assign({}, req.body), { preRequisites: normalizeToArray(req.body.prerequisites) });
         if (req.file) {
+            // Delete old file if exists
+            if (existingEvent.filePath) {
+                const oldFilePath = path_1.default.join(process.cwd(), existingEvent.filePath);
+                try {
+                    yield promises_1.default.unlink(oldFilePath);
+                    console.log("✅ Deleted old file:", oldFilePath);
+                }
+                catch (err) {
+                    if (err.code !== "ENOENT") {
+                        console.error("❌ Failed to delete old file:", err);
+                    }
+                }
+            }
+            // Save new file path
             updateData.filePath = req.file.path;
         }
         const event = yield eventRepo_1.EventRepo.updateEvent(id, updateData);
@@ -86,8 +107,25 @@ router.put("/update/:id", upload_1.default.single("filePath"), (req, res) => __a
 router.delete("/delete/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
+        // Fetch event first
+        const event = yield eventRepo_1.EventRepo.getEventById(id);
+        if (!event) {
+            return res.status(404).json({ error: "Event not found" });
+        }
+        // Delete image file if exists
+        if (event.filePath) {
+            const filePath = path_1.default.resolve(event.filePath);
+            try {
+                yield promises_1.default.unlink(filePath);
+                console.log("Deleted event image:", filePath);
+            }
+            catch (err) {
+                console.error("Failed to delete event image:", err);
+            }
+        }
+        // Delete DB record
         yield eventRepo_1.EventRepo.deleteEvent(id);
-        res.json({ message: "Event deleted successfully" });
+        res.json({ message: "Event and image deleted successfully" });
     }
     catch (err) {
         console.error("Error deleting event:", err);
@@ -104,6 +142,32 @@ router.get("/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             return Object.assign(Object.assign({}, ((_b = (_a = event.toObject) === null || _a === void 0 ? void 0 : _a.call(event)) !== null && _b !== void 0 ? _b : event)), { filePath: base64File });
         });
         res.json(updatedEvents);
+    }
+    catch (err) {
+        console.error("Error fetching events:", err);
+        res.status(500).json({ error: "Failed to fetch events" });
+    }
+}));
+// Get Upcoming and Past Events
+router.get("/categorisedEvents", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Fetch upcoming and past events
+        const upcomingEventsList = yield eventRepo_1.EventRepo.getAllUpcomingEvents();
+        const pastEventsList = yield eventRepo_1.EventRepo.getAllPastEvents();
+        // Convert file paths to base64
+        const upcomingEventsData = upcomingEventsList.map((event) => {
+            const base64File = event.filePath ? (0, filetobase64converter_1.fileToBase64)(event.filePath) : null;
+            return Object.assign(Object.assign({}, event), { filePath: base64File });
+        });
+        const pastEventsData = pastEventsList.map((event) => {
+            const base64File = event.filePath ? (0, filetobase64converter_1.fileToBase64)(event.filePath) : null;
+            return Object.assign(Object.assign({}, event), { filePath: base64File });
+        });
+        // Respond with categorized events
+        res.json({
+            upcomingEvents: upcomingEventsData,
+            pastEvents: pastEventsData,
+        });
     }
     catch (err) {
         console.error("Error fetching events:", err);

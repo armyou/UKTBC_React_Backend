@@ -16,6 +16,8 @@ const express_1 = require("express");
 const madiVantaluRepo_1 = require("../repos/madiVantaluRepo");
 const upload_1 = __importDefault(require("../middleware/upload"));
 const filetobase64converter_1 = require("../middleware/filetobase64converter");
+const promises_1 = __importDefault(require("fs/promises"));
+const path_1 = __importDefault(require("path"));
 const router = (0, express_1.Router)();
 // Add Caterer
 function normalizeToArray(input) {
@@ -58,13 +60,31 @@ router.post("/add", upload_1.default.single("filePath"), (req, res) => __awaiter
     }
 }));
 // Update Caterer
-router.put("/update/:id", upload_1.default.single("file"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put("/update/:id", upload_1.default.single("filePath"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
+        // Fetch existing caterer
+        const existingCaterer = yield madiVantaluRepo_1.MadiVantaluRepo.getById(id);
+        if (!existingCaterer) {
+            return res.status(404).json({ error: "Caterer not found" });
+        }
         // Spread request body and normalize serviceLocations
         const updateData = Object.assign(Object.assign({}, req.body), { serviceLocations: normalizeToArray(req.body.serviceLocations) });
-        // Handle file upload if present
         if (req.file) {
+            // Delete old file if it exists
+            if (existingCaterer.filePath) {
+                const oldFilePath = path_1.default.join(process.cwd(), existingCaterer.filePath);
+                try {
+                    yield promises_1.default.unlink(oldFilePath);
+                    console.log("✅ Deleted old file:", oldFilePath);
+                }
+                catch (err) {
+                    if (err.code !== "ENOENT") {
+                        console.error("❌ Failed to delete old file:", err);
+                    }
+                }
+            }
+            // Save new file path
             updateData.filePath = req.file.path;
         }
         const madiVantalu = yield madiVantaluRepo_1.MadiVantaluRepo.update(id, updateData);
@@ -79,8 +99,25 @@ router.put("/update/:id", upload_1.default.single("file"), (req, res) => __await
 router.delete("/delete/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
+        // Fetch caterer before deleting
+        const caterer = yield madiVantaluRepo_1.MadiVantaluRepo.getById(id);
+        if (!caterer) {
+            return res.status(404).json({ error: "Caterer not found" });
+        }
+        // Delete file if exists
+        if (caterer.filePath) {
+            const filePath = path_1.default.resolve(caterer.filePath);
+            try {
+                yield promises_1.default.unlink(filePath);
+                console.log("Deleted caterer file:", filePath);
+            }
+            catch (err) {
+                console.error("Failed to delete caterer file:", err);
+            }
+        }
+        // Delete DB record
         yield madiVantaluRepo_1.MadiVantaluRepo.delete(id);
-        res.json({ message: "Caterer deleted successfully" });
+        res.json({ message: "Caterer and file deleted successfully" });
     }
     catch (err) {
         console.error("Error deleting caterer:", err);

@@ -18,6 +18,32 @@ export const config = {
   smtpPassword: process.env.SMTP_PASSWORD,
   fromEmail: process.env.FROM_EMAIL || "donate@uktbc.org",
   fromName: process.env.FROM_NAME || "UK Telugu Brahmin Community",
+  SMTP_SERVER: process.env.SMTP_SERVER,
+  SMTP_PORT: process.env.SMTP_PORT,
+  OAUTH_CLIENT_ID: process.env.OAUTH_CLIENT_ID,
+  OAUTH_CLIENT_SECRET: process.env.OAUTH_CLIENT_SECRET,
+  OAUTH_APP_ID_URI: process.env.OAUTH_APP_ID_URI,
+  OAUTH_TENANT_ID: process.env.OAUTH_TENANT_ID,
+  SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
+};
+export const msalConfig = {
+  auth: {
+    clientId: process.env.OAUTH_CLIENT_ID, // Application (client) ID
+    authority: "https://login.microsoftonline.com/"+process.env.OAUTH_TENANT_ID, // Tenant ID or "common"
+    redirectUri: "http://localhost:3003/smtp", // Your app URL
+  },
+  cache: {
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: false,
+  }
 };
 
+export const loginRequest = {
+  scopes: [
+    "openid",
+    "profile",
+    "User.Read",
+    "https://outlook.office365.com/SMTP.Send" // Scope for SMTP send permission
+  ],
+};
 export default config;

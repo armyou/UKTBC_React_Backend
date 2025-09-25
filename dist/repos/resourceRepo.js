@@ -41,5 +41,19 @@ class ResourceRepo {
             return resources_1.default.findByIdAndDelete(id);
         });
     }
+    static getLatestPanchangam(p0) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return resources_1.default.find({ resourceType: "Panchangam" })
+                .sort({ createdAt: -1 })
+                .limit(3);
+        });
+    }
+    static getLatestReports(p0) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return resources_1.default.find({ resourceType: "Report" })
+                .sort({ createdAt: -1 })
+                .limit(3);
+        });
+    }
 }
 exports.ResourceRepo = ResourceRepo;

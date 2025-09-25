@@ -12,39 +12,32 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PurohitRepo = void 0;
-const purohit_1 = __importDefault(require("../models/purohit"));
-class PurohitRepo {
-    static create(data) {
+exports.FooterRepo = void 0;
+const footer_1 = __importDefault(require("../models/footer"));
+class FooterRepo {
+    static createFooterCount(data) {
         return __awaiter(this, void 0, void 0, function* () {
-            const purohit = new purohit_1.default(data);
-            return purohit.save();
+            const count = new footer_1.default(data);
+            return count.save();
         });
     }
-    static getAll() {
+    static getCount() {
         return __awaiter(this, void 0, void 0, function* () {
-            return purohit_1.default.find().sort({ createdAt: -1 });
+            return footer_1.default.find().sort({ createdAt: -1 });
         });
     }
-    static getById(id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return purohit_1.default.findById(id);
-        });
-    }
-    static update(id, data) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return purohit_1.default.findByIdAndUpdate(id, data, { new: true });
-        });
-    }
-    static delete(id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return purohit_1.default.findByIdAndDelete(id);
-        });
-    }
-    static getLatestPurohit() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return purohit_1.default.find().sort({ createdAt: -1 }).limit(3);
+    // Find latest and increment count by given value
+    static incrementCount() {
+        return __awaiter(this, arguments, void 0, function* (incrementBy = 1, status = 1) {
+            return footer_1.default.findOneAndUpdate({}, {
+                $inc: { count: incrementBy },
+                $set: { status },
+            }, {
+                new: true, // return updated doc
+                sort: { createdAt: -1 }, // always update the latest
+                upsert: true, // if no record exists, create one
+            });
         });
     }
 }
-exports.PurohitRepo = PurohitRepo;
+exports.FooterRepo = FooterRepo;

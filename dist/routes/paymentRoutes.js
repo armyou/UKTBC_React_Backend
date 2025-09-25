@@ -179,48 +179,67 @@ router.get("/stripe/payment-status/:sessionId", (req, res) => __awaiter(void 0, 
  * Update payment status
  */
 router.post("/stripe/update-payment-status", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("🔥 /stripe/update-payment-status called");
     try {
-        const { sessionId, status, paymentId } = req.body;
+        console.log("Request body:", req.body);
+        const { sessionId, status, paymentId, senderEmail } = req.body;
+        console.log("Extracted values:", {
+            sessionId,
+            status,
+            paymentId,
+            senderEmail,
+        });
         let updatedPayment;
         if (paymentId) {
-            // If paymentId is provided, update by document ID (preferred)
+            console.log(`Looking for payment by ID: ${paymentId}`);
             updatedPayment = yield payments_1.default.findByIdAndUpdate(paymentId, {
-                status: status,
-                stripeSessionId: sessionId, // Update stripeSessionId with the actual session ID
-            }, { new: true });
-        }
-        else {
-            updatedPayment = yield payments_1.default.findOneAndUpdate({
-                $or: [{ stripeSessionId: sessionId }],
-            }, {
                 status: status,
                 stripeSessionId: sessionId,
             }, { new: true });
+            console.log("Payment updated by ID:", updatedPayment === null || updatedPayment === void 0 ? void 0 : updatedPayment._id);
+        }
+        else {
+            console.log(`Looking for payment by sessionId: ${sessionId}`);
+            updatedPayment = yield payments_1.default.findOneAndUpdate({ stripeSessionId: sessionId }, { status: status, stripeSessionId: sessionId }, { new: true });
+            console.log("Payment updated by sessionId:", updatedPayment === null || updatedPayment === void 0 ? void 0 : updatedPayment._id);
         }
         if (!updatedPayment) {
+            console.warn("Payment not found!");
             return res.status(404).json({
                 error: "Payment not found",
                 sessionId,
                 paymentId,
             });
         }
+        console.log(`Payment status is now: ${updatedPayment.status}`);
         // Send email receipt if payment is successful
-        if (status === "paid" || status === "succeeded") {
+        if (status === "paid" ||
+            status === "succeeded" ||
+            status === "completed") {
+            console.log("Payment is successful, preparing to send email...");
             try {
+                console.log("Initializing email service...");
                 yield emailService_1.emailService.initializeCredentials(sessionId, paymentId);
-                yield emailService_1.emailService.sendDonationReceipt(updatedPayment);
-                console.log("Donation receipt email sent successfully");
+                console.log("Email service initialized successfully");
+                console.log(`Sending donation receipt to: ${senderEmail}`);
+                yield emailService_1.emailService.sendDonationReceipt(updatedPayment, senderEmail);
+                console.log("Donation receipt email sent successfully ✅");
             }
             catch (emailError) {
                 console.error("Error sending donation receipt email:", emailError);
                 // Don't fail the payment status update if email fails
             }
         }
+        else {
+            console.log("Payment not successful, skipping email sending.");
+        }
+        console.log("Sending response back to client...");
         res.status(200).json({
             success: true,
             message: "Payment status updated successfully",
             payment: updatedPayment,
         });
+        console.log("Response sent ✅");
     }
     catch (err) {
         console.error("ERROR updating payment status:", err.message);

@@ -34,28 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const EventSchema = new mongoose_1.Schema({
-    eventTitle: { type: String, required: true },
-    eventDescription: { type: String, required: false },
-    eventDate: { type: String, required: true },
-    eventTime: { type: String, required: true },
-    registrationLink: { type: String, required: false },
-}, { _id: false } // optional: prevent Mongo from creating _id for each event
-);
-const ProjectsSchema = new mongoose_1.Schema({
-    projectTitle: { type: String, required: true },
-    tagline: { type: String },
-    description: { type: String },
-    vision: { type: String },
-    impactPoints: [{ type: String }],
-    projectType: { type: String },
-    highlights: [{ type: String }],
-    events: [EventSchema], // Array of event objects
-    filePath: { type: String },
-    status: {
-        type: String,
-        enum: ["draft", "active", "completed"],
-        default: "draft",
-    },
+const FooterSchema = new mongoose_1.Schema({
+    count: { type: Number },
+    status: { type: String, default: "1" },
 }, { timestamps: true });
-exports.default = mongoose_1.default.model("projects", ProjectsSchema);
+exports.default = mongoose_1.default.model("footer", FooterSchema);

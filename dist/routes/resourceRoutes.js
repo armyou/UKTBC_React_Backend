@@ -16,6 +16,8 @@ const express_1 = require("express");
 const resourceRepo_1 = require("../repos/resourceRepo");
 const pdfUpload_1 = __importDefault(require("../middleware/pdfUpload"));
 const filetobase64converter_1 = require("../middleware/filetobase64converter");
+const promises_1 = __importDefault(require("fs/promises"));
+const path_1 = __importDefault(require("path"));
 const router = (0, express_1.Router)();
 // Add Resource
 router.post("/add", pdfUpload_1.default.single("filePath"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -36,11 +38,30 @@ router.post("/add", pdfUpload_1.default.single("filePath"), (req, res) => __awai
     }
 }));
 // Update Resource
-router.put("/update/:id", pdfUpload_1.default.single("file"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+router.put("/update/:id", pdfUpload_1.default.single("filePath"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
+        // Fetch existing resource
+        const existingResource = yield resourceRepo_1.ResourceRepo.getResourceById(id);
+        if (!existingResource) {
+            return res.status(404).json({ error: "Resource not found" });
+        }
         const updateData = Object.assign({}, req.body);
         if (req.file) {
+            // Delete old file if it exists
+            if (existingResource.filePath) {
+                const oldFilePath = path_1.default.join(process.cwd(), existingResource.filePath);
+                try {
+                    yield promises_1.default.unlink(oldFilePath);
+                    console.log("✅ Deleted old file:", oldFilePath);
+                }
+                catch (err) {
+                    if (err.code !== "ENOENT") {
+                        console.error("❌ Failed to delete old file:", err);
+                    }
+                }
+            }
+            // Save new file path
             updateData.filePath = req.file.path;
         }
         const resource = yield resourceRepo_1.ResourceRepo.updateResource(id, updateData);
@@ -55,8 +76,34 @@ router.put("/update/:id", pdfUpload_1.default.single("file"), (req, res) => __aw
 router.delete("/delete/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
+        // Fetch resource first
+        const resource = yield resourceRepo_1.ResourceRepo.getResourceById(id);
+        if (!resource) {
+            return res.status(404).json({ error: "Resource not found" });
+        }
+        // Delete file if exists
+        if (resource.filePath) {
+            const filePath = path_1.default.join(process.cwd(), resource.filePath);
+            try {
+                yield promises_1.default.unlink(filePath);
+                console.log("✅ Deleted resource file:", filePath);
+            }
+            catch (err) {
+                if (err.code === "ENOENT") {
+                    console.warn("⚠️ File already missing, skipping:", filePath);
+                }
+                else {
+                    console.error("❌ Failed to delete resource file:", err);
+                }
+            }
+        }
+        // Delete DB record
         yield resourceRepo_1.ResourceRepo.deleteResource(id);
-        res.json({ message: "Resource deleted successfully" });
+        res.json({
+            message: resource.filePath
+                ? "Resource and file deleted successfully"
+                : "Resource deleted successfully (no file found)",
+        });
     }
     catch (err) {
         console.error("Error deleting resource:", err);
