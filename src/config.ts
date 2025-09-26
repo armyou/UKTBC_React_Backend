@@ -26,24 +26,5 @@ export const config = {
   OAUTH_TENANT_ID: process.env.OAUTH_TENANT_ID,
   SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
 };
-export const msalConfig = {
-  auth: {
-    clientId: process.env.OAUTH_CLIENT_ID, // Application (client) ID
-    authority: "https://login.microsoftonline.com/"+process.env.OAUTH_TENANT_ID, // Tenant ID or "common"
-    redirectUri: "http://localhost:3003/smtp", // Your app URL
-  },
-  cache: {
-    cacheLocation: "localStorage",
-    storeAuthStateInCookie: false,
-  }
-};
 
-export const loginRequest = {
-  scopes: [
-    "openid",
-    "profile",
-    "User.Read",
-    "https://outlook.office365.com/SMTP.Send" // Scope for SMTP send permission
-  ],
-};
 export default config;
