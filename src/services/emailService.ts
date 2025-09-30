@@ -4,6 +4,7 @@ import { generateDonationReceiptPDF } from "../services/pdfService";
 import config from "../config";
 import path from "path";
 import axios from "axios";
+import { access } from "fs";
 
 interface EmailCredentials {
   host: string;
@@ -33,7 +34,9 @@ export class EmailService {
         client_id: clientId,
         client_secret: clientSecret,
         scope: "https://outlook.office365.com/.default", //  for SMTP
-        grant_type: "client_credentials",
+        grant_type: "authorization_code",
+        redirect_uri:'http://localhost:3003/smtpweb',
+        code:'1.Aa8AEcXT6O-4IEW_084Fn2r-17zODwnYQJZGjes0kGCH3tCvACKvAA.AgABBAIAAABVrSpeuWamRam2jAF1XRQEAwDs_wUA9P_chyrD7pWxhFlCMig_iOxX3B9mRNmQtt9GJegcyF43-lALgWwC-yfUIvhgmE_1MvKSj03wBgU5hsMFqEOtSzRRhsfoe7lGTBlNfP20gnwlj1HhHn6Qw4n_GBTyZhuIKZ5WPOQtP-MNQoDSzKWIImmGH6QRj8Al5gOcCEvGDERWfV9kPKqKe44iJ1RdSbGE14Rvc_W5hDtHO0jTTYxEl2FWlxSpvm1NJ4caWvYfru2g3-Dg_p1BdWx02HS8EYpxz7sBClD90YL4306RA156fufwmrQtqrz5p8TB4KaImLyfT1iZ_bKqmnO4MKhsZTzqHgbR9ab8Qznng3hJuNTRAkCdzKncPwKUWqcvr8ZPvFqkuOWrtwgQ3QDDAzUYVtg6Ar3gVGTNhpfxzpaqCzyaVMQLgwMvbrjCuAJJ9JFuvdUVslTkkpMRR0AUWmHMgQbPp99c-CsDso0qh-CNR8Ug8u9e2k2kxfjsqQ1n6g-SUGS14dLHuXDtJIEZSRpbaTpThgc1G8iWNETbL19uQQBJugDTvv2dA81PE5-uJKTSjd2-FAHsF7cZmXqaQVUl5c7ONbbVtjfmEbGsa1u93QPqUqtf81HqNTPTuO2Of_NkXMg5tobEr9AsQfVxz4WbCT-fudxws-hbalPbgGQK_8--4Y74NSlYyiYLqGt7D2mRdr7bCTfui85oISD3Vbb-uikuravJ5FO9IXn_QNCIwTv5sr7xxivFJVabYWnZAwiei1zUAwA_ajbvUMOQjw'
       });
 
       const response = await axios.post(tokenUrl, requestData, {
@@ -131,12 +134,13 @@ export class EmailService {
       auth: {
         type: "OAuth2",
         user: "website@UKTBC.org",
+        accessToken:accessToken,
         clientId: config.OAUTH_CLIENT_ID,
         clientSecret: config.OAUTH_CLIENT_SECRET,
-        accessToken: accessToken,
+        // accessToken: accessToken,
       },
       tls: {
-        ciphers: "TLSv1.2",
+        ciphers: "SSLv3",
         rejectUnauthorized: false,
       },
     });
@@ -154,13 +158,15 @@ export class EmailService {
       if (!this.transporter) {
         throw new Error("Email service not initialized");
       }
+      // console.log(`giftAid: ${payment.giftAid}`);
+      // console.log(`corpDonation: ${payment.corpDonation}`)
 
-      if (payment.giftAid !== "yes" || payment.corpDonation === "yes") {
-        console.log(
-          "Email not sent: giftAid is not 'yes' or corpDonation is 'yes'"
-        );
-        return;
-      }
+      // if (payment.giftAid !== "yes" || payment.corpDonation === "yes") {
+      //   console.log(
+      //     "Email not sent: giftAid is not 'yes' or corpDonation is 'yes'"
+      //   );
+      //   return;
+      // }
 
       const pdfBuffer = await generateDonationReceiptPDF(payment);
       const subject = `Donation Receipt - UK Telugu Brahmin Community`;
@@ -170,6 +176,8 @@ export class EmailService {
         process.cwd(),
         "src/resources/UKTBC Logo PNG.png"
       );
+
+      console.log(`${this.credentials?.user}`)
 
       const mailOptions = {
         from: `"UK Telugu Brahmin Community" <${this.credentials?.user}>`,
@@ -222,7 +230,7 @@ export class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <img src="cid:logo" alt="UK Telugu Brahmin Community" style="width: 150px; height: 60px; margin-bottom: 10px;">
+            <img src="cid:logo" alt="UK Telugu Brahmin Community" style="width: 150px; height: 150px; margin-bottom: 10px;">
             <div class="logo">UK Telugu Brahmin Community</div>
             <p>Charity registered in England & Wales No. 1205566</p>
           </div>
@@ -265,5 +273,6 @@ export class EmailService {
     `;
   }
 }
+
 
 export const emailService = new EmailService();
