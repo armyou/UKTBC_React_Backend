@@ -20,6 +20,8 @@ const getDashboardData_1 = __importDefault(require("./routes/getDashboardData"))
 const getServices_1 = __importDefault(require("./routes/getServices"));
 const getResources_1 = __importDefault(require("./routes/getResources"));
 const footerCounter_1 = __importDefault(require("./routes/footerCounter"));
+const downloadHMRCRoutes_1 = __importDefault(require("./routes/downloadHMRCRoutes"));
+const smtpweb_1 = __importDefault(require("./routes/smtpweb"));
 const morgan_1 = __importDefault(require("morgan"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -50,6 +52,8 @@ app.use("/api/web/dashboardData", getDashboardData_1.default);
 app.use("/api/web/services", getServices_1.default);
 app.use("/api/web/resources", getResources_1.default);
 app.use("/api/footer", footerCounter_1.default);
+app.use("/api/hrmc", downloadHMRCRoutes_1.default);
+app.use("/smtpweb", smtpweb_1.default);
 // MongoDB Connection
 mongoose_1.default
     .connect(config_1.default.mongoUri, {})
