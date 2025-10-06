@@ -113,12 +113,17 @@ export async function generateDonationReceiptPDF(
 
       // Donation details
       doc.fontSize(12).text("Donation Details:", leftX, currentY).moveDown(0.5);
+      
+      // Calculate Gift Aid amount and status
+      const giftAidAmount = payment.giftAid === "yes" ? (payment.amount * 0.25).toFixed(2) : "0.00";
+      const giftAidDisplay = payment.giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
+      
       const donationDetails = [
         `Donation Date: ${new Date().toLocaleDateString("en-GB")}`,
         `Donation for: ${payment.paymentReference || "General Donation"}`,
         `Mode of transfer: ${payment.paymentType}`,
         `Donation amount: £${payment.amount.toFixed(2)}`,
-        `Gift Aid (UK Tax Payer): Yes - £${(payment.amount * 0.25).toFixed(2)}`,
+        `Gift Aid (UK Tax Payer): ${giftAidDisplay}`,
       ];
 
       doc.fontSize(10);
