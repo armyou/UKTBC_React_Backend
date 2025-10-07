@@ -84,15 +84,12 @@ router.delete("/delete/:id", async (req, res) => {
       const filePath = path.join(process.cwd(), vipravani.filePath);
       try {
         await fs.unlink(filePath);
-        console.log("✅ Deleted vipravani file:", filePath);
+        console.log(" Deleted vipravani file:", filePath);
       } catch (err: any) {
         if (err.code === "ENOENT") {
-          console.warn(
-            "⚠️ Vipravani file already missing, skipping:",
-            filePath
-          );
+          console.warn("Vipravani file already missing, skipping:", filePath);
         } else {
-          console.error("❌ Failed to delete vipravani file:", err);
+          console.error(" Failed to delete vipravani file:", err);
         }
       }
     }

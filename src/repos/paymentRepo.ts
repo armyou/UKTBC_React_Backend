@@ -19,10 +19,10 @@ export const updatePaymentStatus = async (
   });
 
   if (paymentId) {
-    // ✅ Ensure ObjectId conversion
+    //  Ensure ObjectId conversion
     const objectId = new mongoose.Types.ObjectId(paymentId);
 
-    console.log("🔄 Updating by paymentId (ObjectId):", objectId);
+    console.log("Updating by paymentId (ObjectId):", objectId);
 
     return await Payment.findByIdAndUpdate(
       objectId,
@@ -34,7 +34,7 @@ export const updatePaymentStatus = async (
     );
   } else {
     // fallback
-    console.log("🔄 Updating by sessionId:", sessionId);
+    console.log(" Updating by sessionId:", sessionId);
 
     return await Payment.findOneAndUpdate(
       { stripeSessionId: sessionId },

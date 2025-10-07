@@ -137,12 +137,12 @@ router.delete("/delete/:id", async (req, res) => {
       const filePath = path.join(process.cwd(), project.filePath);
       try {
         await fs.unlink(filePath);
-        console.log("✅ Deleted image:", filePath);
+        console.log(" Deleted image:", filePath);
       } catch (err: any) {
         if (err.code === "ENOENT") {
-          console.warn("⚠️ Image file not found, skipping:", filePath);
+          console.warn(" Image file not found, skipping:", filePath);
         } else {
-          console.error("❌ Failed to delete image:", err);
+          console.error("Failed to delete image:", err);
         }
       }
     }

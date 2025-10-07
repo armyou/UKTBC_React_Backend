@@ -88,7 +88,7 @@ router.put("/update/:id", upload.single("filePath"), async (req, res) => {
         const oldFilePath = path.join(process.cwd(), existingEvent.filePath);
         try {
           await fs.unlink(oldFilePath);
-          console.log("✅ Deleted old file:", oldFilePath);
+          console.log("Deleted old file:", oldFilePath);
         } catch (err: any) {
           if (err.code !== "ENOENT") {
             console.error("❌ Failed to delete old file:", err);
