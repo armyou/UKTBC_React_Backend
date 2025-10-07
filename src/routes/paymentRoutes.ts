@@ -9,6 +9,7 @@ import {
 } from "../repos/paymentRepo";
 import Payment from "../models/payments";
 import { emailService } from "../services/emailService";
+import { Console } from "console";
 
 const checkoutNodeJssdk: any = require("@paypal/checkout-server-sdk");
 
@@ -116,7 +117,7 @@ router.post(
             undefined,
             updatedPayment._id?.toString()
           );
-          await emailService.sendDonationReceipt(updatedPayment);
+          await emailService.sendDonationReceipt(updatedPayment, undefined, "yes", undefined);
           console.log("Donation receipt email sent successfully");
         } catch (emailError) {
           console.error("Error sending donation receipt email:", emailError);
@@ -139,6 +140,7 @@ router.post(
 router.post(
   "/stripe/create-checkout-session",
   async (req: Request, res: Response) => {
+    console.log("getting req: ", req.body);
     try {
       const { amount, email, firstName, lastName, ...otherData } = req.body;
 
@@ -201,7 +203,7 @@ router.get(
       if (session.payment_status === "paid" && updatedPayment) {
         try {
           await emailService.initializeCredentials(session.id, undefined);
-          await emailService.sendDonationReceipt(updatedPayment);
+          await emailService.sendDonationReceipt(updatedPayment, undefined, "yes", undefined);
           console.log("Donation receipt email sent successfully");
         } catch (emailError) {
           console.error("Error sending donation receipt email:", emailError);
@@ -223,16 +225,29 @@ router.get(
 router.post(
   "/stripe/update-payment-status",
   async (req: Request, res: Response) => {
-    console.log("🔥 /stripe/update-payment-status called");
+    console.log(" /stripe/update-payment-status called");
     try {
       console.log("Request body:", req.body);
 
-      const { sessionId, status, paymentId, senderEmail } = req.body;
+      const { 
+        sessionId, 
+        status, 
+        paymentId, 
+        senderEmail, 
+        giftAidValue, 
+        donationType, 
+        currentYear, 
+        sourceCode 
+      } = req.body;
       console.log("Extracted values:", {
         sessionId,
         status,
         paymentId,
         senderEmail,
+        giftAidValue,
+        donationType,
+        currentYear,
+        sourceCode,
       });
 
       let updatedPayment;
@@ -264,10 +279,26 @@ router.post(
           error: "Payment not found",
           sessionId,
           paymentId,
+          giftAidValue,
         });
       }
 
       console.log(`Payment status is now: ${updatedPayment.status}`);
+
+      // Generate receipt ID
+      const generateReceiptId = (giftAidValue: string, currentYear: number, donationType: string, sourceCode: string): string => {
+        // Get the next sequence number (you might want to store this in a database)
+        // For now, using timestamp as sequence
+        const sequence = Date.now().toString().slice(-4); // Last 4 digits of timestamp
+        
+        const giftAidPrefix = giftAidValue === "yes" ? "GA" : "NG";
+        const donorType = donationType === "no" ? "IND" : "CORP";
+        
+        return `${giftAidPrefix}${currentYear}${donorType}${sourceCode}${sequence}`;
+      };
+
+      const receiptId = generateReceiptId(giftAidValue, currentYear, donationType, sourceCode);
+      console.log("Generated receipt ID:", receiptId);
 
       // Send email receipt if payment is successful
       if (
@@ -279,15 +310,23 @@ router.post(
 
         try {
           console.log("Initializing email service...");
-          await emailService.initializeCredentials(sessionId, paymentId);
+          await emailService.initializeCredentials(
+            sessionId,
+            paymentId,
+            giftAidValue
+          );
           console.log("Email service initialized successfully");
 
           console.log(`Sending donation receipt to: ${senderEmail}`);
-          await emailService.sendDonationReceipt(updatedPayment, senderEmail);
-          console.log("Donation receipt email sent successfully ✅");
+          await emailService.sendDonationReceipt(
+            updatedPayment,
+            senderEmail,
+            giftAidValue,
+            receiptId
+          );
+          console.log("Donation receipt email sent successfully");
         } catch (emailError) {
           console.error("Error sending donation receipt email:", emailError);
-          // Don't fail the payment status update if email fails
         }
       } else {
         console.log("Payment not successful, skipping email sending.");
@@ -299,7 +338,7 @@ router.post(
         message: "Payment status updated successfully",
         payment: updatedPayment,
       });
-      console.log("Response sent ✅");
+      console.log("Response sent");
     } catch (err: any) {
       console.error("ERROR updating payment status:", err.message);
       res.status(500).json({ error: err.message });

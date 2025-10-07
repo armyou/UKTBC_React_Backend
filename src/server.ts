@@ -16,7 +16,8 @@ import servicesRoutes from "./routes/getServices";
 import resourcesRoutes from "./routes/getResources";
 import footerCounterRoutes from "./routes/footerCounter";
 import hrmcRoutes from "./routes/downloadHMRCRoutes";
-import smtpweb from "./routes/smtpweb"
+import smtpweb from "./routes/smtpweb";
+import contactUsRoutes from "./routes/contactUsRoute";
 import morgan from "morgan";
 
 dotenv.config();
@@ -54,8 +55,9 @@ app.use("/api/web/dashboardData", dashboardRoutes);
 app.use("/api/web/services", servicesRoutes);
 app.use("/api/web/resources", resourcesRoutes);
 app.use("/api/footer", footerCounterRoutes);
-app.use("/api/hrmc",hrmcRoutes)
+app.use("/api/hrmc",hrmcRoutes);
 app.use("/smtpweb",smtpweb);
+app.use("/api/contactUs", contactUsRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})

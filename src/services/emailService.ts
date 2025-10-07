@@ -34,8 +34,8 @@ export class EmailService {
         client_secret: clientSecret,
         scope: "https://outlook.office365.com/.default", //  for SMTP
         grant_type: "authorization_code",
-        redirect_uri:'http://localhost:3003/smtpweb',
-        code:'1.Aa8AEcXT6O-4IEW_084Fn2r-17zODwnYQJZGjes0kGCH3tCvACKvAA.AgABBAIAAABlMNzVhAPUTrARzfQjWPtKAwDs_wUA9P8hNlnOyvfugq3fF25kc-SN2hUDyKwbjYn9YKxZA7L3CgOPBNPMrOA24tIYLlVZQ9wCOoTwr3aDiQytGPicu_uIbXM10gYOhQgKwxYfi7lzNgjD4PywYPrPHkSNimqHs-8Rz5BWzVy0eR8fDJIO_iF5k-HcDtbgZ5Ah4aQkdbEwk99_FXbfJ5IDeWDecLJ5u1QDWQTmA6CZL0Rr9Z4K44gqMADODqlk4-Hl9XOGFa3Lw7IKBnrjbyggXeK1LtT4WkKXzgEWpu4GFWfJHUKX39aa8Zi6bUlnonMMIEMiQxsmw_HORIdVvytPsKMx0X2mHG6_svg5bOXxlvOvpi9l-oKdE5NAGJV-ti0gVvY09AmbHbq8AdXXkHRP82wnDIv1Z_RdibiLK3ViaOn3uFcN0jrsZW2yFDnd13qj4d3sExQz6PU1GYAEYsldzktViW0rhgvYWAO0_1xMXvCadruwf2VsmGqY3gpJTliyQ5Abn_6Z8cNVTztU0C1wjjat1dhUgQQ5W2nH7slC28XuT8gOswwe-gZmWSl_3Ec10WUpjnbcSkD_VNpd5Jdq7o-q-guk_Q65SVg1gjirkE1qZPP0wKh1olUW05JwPhTE8sS__1mj63WpoAniz42bL3BIwJDovf3rMIJCFtNxZmcthu2PWPOMYknH1_1d-PbOjRajZ3cB5EKmvXMvBk_LYvmSoMrD3qs8zhYIP7BysP24r0_8r5GPS-TPnwXAekemOzXlnaZBNQVfZNhTYbnJDaI'
+        redirect_uri: "http://localhost:3003/smtpweb",
+        code: "1.Aa8AEcXT6O-4IEW_084Fn2r-17zODwnYQJZGjes0kGCH3tCvACKvAA.AgABBAIAAABlMNzVhAPUTrARzfQjWPtKAwDs_wUA9P_UoMjwzIUKEE_CuxRYW52we38xPLHf0L1o-9-5KFsk0YsVs5TUCHb1q6h4zMscPl7rIEq9D5BqaBdgb2nOnwUdaWojsx0X6WF4SAp4xxA1l_eaGvcoWnjZN2aMNKJPWO8wBb2gTG2dBNOKEt6IeEYvZYveZNqU2FY_7YEQMDMmSBgSCoTTUPh-QVNZX_7BoJtzo9gD1FDo5bifre0f-qYh8_WTwhEhhGhUY0aQpD7PxrcFC-cZzwMkfbDeRnGig-LElWvn6q0ZjZMv3JyFteC9h5QWlE7rH6Qm6usBmnMRat8efRRXkxamDxHCxxrgRKwOCCRdVAlRZBx0RSuefx40PagY7EMA1o7dpJZ-Ygldk6BwQOyMRIaAU_YuR70uAp-kNhvEfDyPz6c462UwSiEcODtL3lrsJoa04spZiZ6yE1WxSzT-iopiWYnfgi4ld8ZqSJ8wgGF5bEx25UbisUyuFrgexQp7b0cSAIzE2bmPRHDXd0odavkbnw7Hm64dQDLOBfrhlhubZrpP3ybEs1yzlg5SNLrSyz_DIwqK8BSCdqv5RZo5iT7Gm4P2Mg0zgVp9sNBerBEmtUfMgvYvQjR9lp04Jk1KFcQfj1RZ1ROi6Ej6Mql_fMV52Fxm0aoBJ7rA-H5AnjDJmHVAnQP3Ol2XFZcJsGyvH823WxxZ2F97QG8ubJ9FDwH4OjxUqxj5D7PsiWxZ3LfsNvg8ywsVBSr0XpcWNAoaHU4HOhFNHQVcD0PF5HnBtR28og",
       });
 
       const response = await axios.post(tokenUrl, requestData, {
@@ -64,7 +64,8 @@ export class EmailService {
 
   async initializeCredentials(
     sessionId?: string,
-    paymentId?: string
+    paymentId?: string,
+    giftAid?: any
   ): Promise<void> {
     try {
       let payment;
@@ -150,23 +151,48 @@ export class EmailService {
     }
   }
 
-  // ---- Send Donation Receipt ----
-  async sendDonationReceipt(payment: any, toEmail?: string): Promise<void> {
+  // ---- Get Sender Email ----
+  getSenderEmail(): string {
+    if (!this.credentials) {
+      throw new Error("Email service not initialized");
+    }
+    return this.credentials.user;
+  }
+
+  // ---- Generic Email Sending Method ----
+  async sendEmail(mailOptions: any): Promise<void> {
     try {
       if (!this.transporter) {
         throw new Error("Email service not initialized");
       }
 
-      if (payment.giftAid !== "yes" || payment.corpDonation === "yes") {
-        console.log(
-          "Email not sent: giftAid is not 'yes' or corpDonation is 'yes'"
-        );
-        return;
-      }
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("Email sent successfully!");
+      console.log("Message ID:", info.messageId);
+    } catch (error) {
+      console.error("Error sending email:", error);
+      throw error;
+    }
+  }
 
-      const pdfBuffer = await generateDonationReceiptPDF(payment);
+  // ---- Send Donation Receipt ----
+  async sendDonationReceipt(
+    payment: any,
+    toEmail?: string,
+    giftAid?: any,
+    receiptId?: string
+  ): Promise<void> {
+    try {
+      if (!this.transporter) {
+        throw new Error("Email service not initialized");
+      }
+      const pdfBuffer = await generateDonationReceiptPDF(
+        payment,
+        giftAid,
+        receiptId
+      );
       const subject = `Donation Receipt - UK Telugu Brahmin Community`;
-      const htmlContent = this.generateEmailHTML(payment);
+      const htmlContent = this.generateEmailHTML(payment, giftAid, receiptId);
 
       const logoPath = path.join(
         process.cwd(),
@@ -202,11 +228,27 @@ export class EmailService {
   }
 
   // ---- Email Template ----
-  generateEmailHTML(payment: any): string {
+  generateEmailHTML(payment: any, giftAid: string, receiptId?: string): string {
+    // Debug logging
+    console.log("Payment data in generateEmailHTML:", {
+      amount: payment.amount,
+      amountType: typeof payment.amount,
+      giftAid: giftAid,
+      giftAidType: typeof giftAid,
+    });
+
+    // Ensure amount is a number
+    const amount = parseFloat(payment.amount) || 0;
     const giftAidAmount =
-      payment.giftAid === "yes" ? (payment.amount * 0.25).toFixed(2) : "0.00";
-    const giftAidStatus = payment.giftAid === "yes" ? "Yes" : "No";
-    const giftAidDisplay = payment.giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
+      giftAid === "yes" ? (amount * 0.25).toFixed(2) : "0.00";
+    const giftAidStatus = giftAid === "yes" ? "Yes" : "No";
+    const giftAidDisplay = giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
+
+    console.log("Calculated values:", {
+      amount,
+      giftAidAmount,
+      giftAidDisplay,
+    });
 
     return `
       <!DOCTYPE html>
@@ -226,7 +268,7 @@ export class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <img src="cid:logo" alt="UK Telugu Brahmin Community" style="width: 150px; height: 60px; margin-bottom: 10px;">
+            <img src="cid:logo" alt="UK Telugu Brahmin Community" style="width: 150px; height: 150px; margin-bottom: 10px;">
             <div class="logo">UK Telugu Brahmin Community</div>
             <p>Charity registered in England & Wales No. 1205566</p>
           </div>
@@ -238,6 +280,7 @@ export class EmailService {
             
             <h3>Donation Details:</h3>
             <ul>
+              <li><strong>Receipt ID:</strong> ${receiptId || "N/A"}</li>
               <li><strong>Donation Date:</strong> ${new Date().toLocaleDateString(
                 "en-GB"
               )}</li>
@@ -245,9 +288,7 @@ export class EmailService {
                 payment.paymentReference || "General Donation"
               }</li>
               <li><strong>Mode of transfer:</strong> ${payment.paymentType}</li>
-              <li><strong>Donation amount:</strong> £${payment.amount.toFixed(
-                2
-              )}</li>
+              <li><strong>Donation amount:</strong> £${amount.toFixed(2)}</li>
               <li><strong>Gift Aid (UK Tax Payer):</strong> ${giftAidDisplay}</li>
             </ul>
             

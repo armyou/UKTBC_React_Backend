@@ -3,7 +3,9 @@ import Payment from "../models/payments";
 import path from "path";
 
 export async function generateDonationReceiptPDF(
-  payment: any
+  payment: any,
+  giftAid: string,
+  receiptId?: string
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
@@ -91,7 +93,7 @@ export async function generateDonationReceiptPDF(
           currentY + 20
         )
         .text(
-          `Receipt No: ${payment._id.toString().slice(-8).toUpperCase()}`,
+          `Receipt No: ${receiptId || payment._id.toString().slice(-8).toUpperCase()}`,
           rightX,
           currentY + 40
         );
@@ -113,11 +115,13 @@ export async function generateDonationReceiptPDF(
 
       // Donation details
       doc.fontSize(12).text("Donation Details:", leftX, currentY).moveDown(0.5);
-      
+
       // Calculate Gift Aid amount and status
-      const giftAidAmount = payment.giftAid === "yes" ? (payment.amount * 0.25).toFixed(2) : "0.00";
-      const giftAidDisplay = payment.giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
-      
+      const giftAidAmount =
+        giftAid === "yes" ? (payment.amount * 0.25).toFixed(2) : "0.00";
+      const giftAidDisplay =
+        giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
+
       const donationDetails = [
         `Donation Date: ${new Date().toLocaleDateString("en-GB")}`,
         `Donation for: ${payment.paymentReference || "General Donation"}`,

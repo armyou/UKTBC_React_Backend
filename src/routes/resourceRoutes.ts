@@ -47,10 +47,10 @@ router.put("/update/:id", upload.single("filePath"), async (req, res) => {
         const oldFilePath = path.join(process.cwd(), existingResource.filePath);
         try {
           await fs.unlink(oldFilePath);
-          console.log("✅ Deleted old file:", oldFilePath);
+          console.log(" Deleted old file:", oldFilePath);
         } catch (err: any) {
           if (err.code !== "ENOENT") {
-            console.error("❌ Failed to delete old file:", err);
+            console.error(" Failed to delete old file:", err);
           }
         }
       }
@@ -83,12 +83,12 @@ router.delete("/delete/:id", async (req, res) => {
       const filePath = path.join(process.cwd(), resource.filePath);
       try {
         await fs.unlink(filePath);
-        console.log("✅ Deleted resource file:", filePath);
+        console.log(" Deleted resource file:", filePath);
       } catch (err: any) {
         if (err.code === "ENOENT") {
-          console.warn("⚠️ File already missing, skipping:", filePath);
+          console.warn(" File already missing, skipping:", filePath);
         } else {
-          console.error("❌ Failed to delete resource file:", err);
+          console.error("Failed to delete resource file:", err);
         }
       }
     }
