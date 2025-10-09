@@ -2,7 +2,7 @@ import { Router } from "express";
 import ExcelJS from "exceljs";
 import path from "path";
 import fs from "fs";
-import Payment, { PaymentDocument } from "../models/payments"; // Adjust import if needed
+import Payment, { PaymentDocument } from "../models/payments";
 import { dummyDonationsData } from "../resources/dummyDonationsData";
 
 const router = Router();
@@ -28,19 +28,23 @@ interface PaymentType {
 router.get("/generate-donations-excel", async (req, res, next) => {
   try {
     // Use dummy data instead of database query
-    const allPayments = dummyDonationsData; // Get all available data
-    
+    const allPayments = dummyDonationsData;
+
     // Separate donations > £20 and ≤ £20
-    const highValueDonations = allPayments.filter(payment => (payment.amount || 0) > 20).map(payment => ({
-      ...payment,
-      aggregatedDonations: "" // Override to blank for high value donations
-    }));
-    const lowValueDonations = allPayments.filter(payment => (payment.amount || 0) <= 20);
-    
+    const highValueDonations = allPayments
+      .filter((payment) => (payment.amount || 0) > 20)
+      .map((payment) => ({
+        ...payment,
+        aggregatedDonations: "", // Override to blank for high value donations
+      }));
+    const lowValueDonations = allPayments.filter(
+      (payment) => (payment.amount || 0) <= 20
+    );
+
     // Aggregate low value donations by grouping individual donations
     const maxAmountPerGroup = 1000; // Maximum amount per group
     const aggregatedLowValueArray = [];
-    
+
     if (lowValueDonations.length > 0) {
       // Sort by date to get the latest date
       const sortedLowValueDonations = lowValueDonations.sort((a, b) => {
@@ -48,18 +52,21 @@ router.get("/generate-donations-excel", async (req, res, next) => {
         const dateB = b.createdAt || new Date();
         return dateB.getTime() - dateA.getTime(); // Latest date first
       });
-      
+
       const latestDate = sortedLowValueDonations[0].createdAt || new Date(); // Latest date
-      
+
       // Group donations by adding them one by one until we reach ~1000
       let currentGroup = [];
       let currentGroupAmount = 0;
-      
+
       for (const donation of sortedLowValueDonations) {
         const donationAmount = donation.amount || 0;
-        
+
         // If adding this donation would exceed 1000, create a group with current donations
-        if (currentGroupAmount + donationAmount > maxAmountPerGroup && currentGroup.length > 0) {
+        if (
+          currentGroupAmount + donationAmount > maxAmountPerGroup &&
+          currentGroup.length > 0
+        ) {
           // Create group with current donations
           aggregatedLowValueArray.push({
             title: "",
@@ -70,9 +77,9 @@ router.get("/generate-donations-excel", async (req, res, next) => {
             aggregatedDonations: "One off Gift Aid donations",
             sponsoredEvent: false,
             createdAt: latestDate,
-            amount: currentGroupAmount
+            amount: currentGroupAmount,
           });
-          
+
           // Start new group with this donation
           currentGroup = [donation];
           currentGroupAmount = donationAmount;
@@ -82,7 +89,7 @@ router.get("/generate-donations-excel", async (req, res, next) => {
           currentGroupAmount += donationAmount;
         }
       }
-      
+
       // Add the last group if it has donations
       if (currentGroup.length > 0) {
         aggregatedLowValueArray.push({
@@ -94,33 +101,48 @@ router.get("/generate-donations-excel", async (req, res, next) => {
           aggregatedDonations: "One off Gift Aid donations",
           sponsoredEvent: false,
           createdAt: latestDate,
-          amount: currentGroupAmount
+          amount: currentGroupAmount,
         });
       }
     }
-    
+
     // Combine high value donations with aggregated low value donations
-    const processedPayments = [...highValueDonations, ...aggregatedLowValueArray];
-    
+    const processedPayments = [
+      ...highValueDonations,
+      ...aggregatedLowValueArray,
+    ];
+
     const maxRowsPerSheet = 1000; // Maximum rows per sheet
     const totalSheets = Math.ceil(processedPayments.length / maxRowsPerSheet); // Calculate number of sheets needed
-    
+
     // Calculate total donations from all data
-    const totalDonations = allPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    const totalDonations = allPayments.reduce(
+      (sum, payment) => sum + (payment.amount || 0),
+      0
+    );
 
     const workbook = new ExcelJS.Workbook();
-    
+
     // Create multiple sheets if data exceeds 1000 rows
     for (let sheetIndex = 0; sheetIndex < totalSheets; sheetIndex++) {
       const startIndex = sheetIndex * maxRowsPerSheet;
-      const endIndex = Math.min(startIndex + maxRowsPerSheet, processedPayments.length);
+      const endIndex = Math.min(
+        startIndex + maxRowsPerSheet,
+        processedPayments.length
+      );
       const payments = processedPayments.slice(startIndex, endIndex);
-      
-      const sheetName = totalSheets === 1 ? "R68GAD_V1_00_0_EN" : `R68GAD_V1_00_0_EN_Sheet${sheetIndex + 1}`;
+
+      const sheetName =
+        totalSheets === 1
+          ? "R68GAD_V1_00_0_EN"
+          : `R68GAD_V1_00_0_EN_Sheet${sheetIndex + 1}`;
       const sheet = workbook.addWorksheet(sheetName);
-      
+
       // Calculate sheet-specific totals
-      const sheetTotalDonations = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+      const sheetTotalDonations = payments.reduce(
+        (sum, payment) => sum + (payment.amount || 0),
+        0
+      );
 
       // --- Top info line ---
       const infoRow = sheet.addRow([
@@ -128,21 +150,29 @@ router.get("/generate-donations-excel", async (req, res, next) => {
       ]);
       sheet.mergeCells(`A${infoRow.number}:J${infoRow.number}`);
       infoRow.getCell(1).font = { bold: true };
-      infoRow.getCell(1).alignment = { vertical: "middle", horizontal: "right" };
+      infoRow.getCell(1).alignment = {
+        vertical: "middle",
+        horizontal: "right",
+      };
 
       // --- Total donations line (sheet-specific) ---
-      const totalRow = sheet.addRow([`Total donations:        £${sheetTotalDonations.toFixed(2)}`]);
+      const totalRow = sheet.addRow([
+        `Total donations:        £${sheetTotalDonations.toFixed(2)}`,
+      ]);
       sheet.mergeCells(`A${totalRow.number}:J${totalRow.number}`);
       totalRow.getCell(1).font = { bold: true, size: 12 };
-      totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "right" };
+      totalRow.getCell(1).alignment = {
+        vertical: "middle",
+        horizontal: "right",
+      };
 
       // Add border styling to the total donations row
       // Border starts from column F (Aggregated donations) to column J (Amount)
       const borderStyle = {
-        top: { style: 'thin' as const, color: { argb: 'FF000000' } },
-        bottom: { style: 'thin' as const, color: { argb: 'FF000000' } },
-        left: { style: 'thin' as const, color: { argb: 'FF000000' } },
-        right: { style: 'thin' as const, color: { argb: 'FF000000' } }
+        top: { style: "thin" as const, color: { argb: "FF000000" } },
+        bottom: { style: "thin" as const, color: { argb: "FF000000" } },
+        left: { style: "thin" as const, color: { argb: "FF000000" } },
+        right: { style: "thin" as const, color: { argb: "FF000000" } },
       };
 
       // Apply border to cells F through J (columns 6-10)
@@ -155,7 +185,10 @@ router.get("/generate-donations-excel", async (req, res, next) => {
       const scheduleRow = sheet.addRow(["Donations schedule table"]);
       sheet.mergeCells(`A${scheduleRow.number}:J${scheduleRow.number}`);
       scheduleRow.getCell(1).font = { bold: true, size: 14 };
-      scheduleRow.getCell(1).alignment = { vertical: "middle", horizontal: "left" };
+      scheduleRow.getCell(1).alignment = {
+        vertical: "middle",
+        horizontal: "left",
+      };
 
       // Add header row with black background and white text (with empty column before Item)
       const headerRow = sheet.addRow([
@@ -180,21 +213,28 @@ router.get("/generate-donations-excel", async (req, res, next) => {
         };
       });
 
-        // Add data rows
-        payments.forEach((payment: PaymentType, index: number) => {
-          const donationDate = payment.createdAt ?? new Date();
-          const formattedDate = `${String(donationDate.getDate()).padStart(2, "0")}/${String(
-            donationDate.getMonth() + 1
-          ).padStart(2, "0")}/${String(donationDate.getFullYear()).slice(-2)}`;
+      // Add data rows
+      payments.forEach((payment: PaymentType, index: number) => {
+        const donationDate = payment.createdAt ?? new Date();
+        const formattedDate = `${String(donationDate.getDate()).padStart(
+          2,
+          "0"
+        )}/${String(donationDate.getMonth() + 1).padStart(2, "0")}/${String(
+          donationDate.getFullYear()
+        ).slice(-2)}`;
 
-          // Apply character limits to column values
-          const title = (payment.title ?? "").substring(0, 4);
-          const firstName = (payment.firstName ?? "").replace(/\s/g, "").substring(0, 35);
-          const lastName = (payment.lastName ?? "").substring(0, 35);
-          const house = (payment.house ?? "").substring(0, 40);
-          // Use the aggregatedDonations field from the payment (already set correctly for both types)
-          // High value donations have blank, low value aggregated donations have "One off Gift Aid donations"
-          const aggregatedDonations = (payment.aggregatedDonations ?? "").substring(0, 35);
+        // Apply character limits to column values
+        const title = (payment.title ?? "").substring(0, 4);
+        const firstName = (payment.firstName ?? "")
+          .replace(/\s/g, "")
+          .substring(0, 35);
+        const lastName = (payment.lastName ?? "").substring(0, 35);
+        const house = (payment.house ?? "").substring(0, 40);
+        // Use the aggregatedDonations field from the payment (already set correctly for both types)
+        // High value donations have blank, low value aggregated donations have "One off Gift Aid donations"
+        const aggregatedDonations = (
+          payment.aggregatedDonations ?? ""
+        ).substring(0, 35);
 
         const row = sheet.addRow([
           index + 1,
@@ -224,56 +264,62 @@ router.get("/generate-donations-excel", async (req, res, next) => {
       // If we have fewer than 1000 data records, we fill the remaining with empty rows
       const currentRowCount = payments.length;
       const maxRows = 1000;
-      
-        // Add additional empty rows if we have fewer than 1000 data records
-        if (currentRowCount < maxRows) {
-          for (let i = currentRowCount + 1; i <= maxRows; i++) {
-            // Apply character limits to empty rows as well
-            const title = "".substring(0, 4);
-            const firstName = "".replace(/\s/g, "").substring(0, 35);
-            const lastName = "".substring(0, 35);
-            const house = "".substring(0, 40);
-            const aggregatedDonations = ""; // Always leave blank for empty rows
 
-            const row = sheet.addRow([
-              i,
-              title,
-              firstName,
-              lastName,
-              house,
-              "",
-              aggregatedDonations,
-              "", // Always leave sponsored event blank
-              "",
-              "", // Blank amount for empty rows
-            ]);
+      // Add additional empty rows if we have fewer than 1000 data records
+      if (currentRowCount < maxRows) {
+        for (let i = currentRowCount + 1; i <= maxRows; i++) {
+          // Apply character limits to empty rows as well
+          const title = "".substring(0, 4);
+          const firstName = "".replace(/\s/g, "").substring(0, 35);
+          const lastName = "".substring(0, 35);
+          const house = "".substring(0, 40);
+          const aggregatedDonations = ""; // Always leave blank for empty rows
 
-            // Apply black background and white text to the "Item" column cell
-            const itemCell = row.getCell(1); // Column A (Item column)
-            itemCell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // White text
-            itemCell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FF000000" }, // Black background
-            };
-          }
+          const row = sheet.addRow([
+            i,
+            title,
+            firstName,
+            lastName,
+            house,
+            "",
+            aggregatedDonations,
+            "", // Always leave sponsored event blank
+            "",
+            "", // Blank amount for empty rows
+          ]);
+
+          // Apply black background and white text to the "Item" column cell
+          const itemCell = row.getCell(1); // Column A (Item column)
+          itemCell.font = { bold: true, color: { argb: "FFFFFFFF" } }; // White text
+          itemCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FF000000" }, // Black background
+          };
         }
-    
+      }
+
       // Log the sheet-specific row count for verification
-      console.log(`Sheet ${sheetIndex + 1}: ${Math.min(currentRowCount, maxRows)} data rows and ${maxRows} total rows`);
+      console.log(
+        `Sheet ${sheetIndex + 1}: ${Math.min(
+          currentRowCount,
+          maxRows
+        )} data rows and ${maxRows} total rows`
+      );
 
       // Auto-fit columns based on content
       sheet.columns.forEach((column, index) => {
         let maxLength = 0;
-        
+
         // Check header length
         if (column.header) {
           maxLength = Math.max(maxLength, column.header.toString().length);
         }
-        
+
         // Check data rows length
         sheet.eachRow((row, rowNumber) => {
-          if (rowNumber > 2) { // Skip header rows
+          if (rowNumber > 2) {
+            // Skip header rows
             const cellValue = row.getCell(index + 1).value;
             if (cellValue !== null && cellValue !== undefined) {
               const cellLength = cellValue.toString().length;
@@ -281,22 +327,34 @@ router.get("/generate-donations-excel", async (req, res, next) => {
             }
           }
         });
-        
+
         // Set column width with some padding
         column.width = Math.max(maxLength + 2, 10); // Minimum width of 10, add 2 for padding
       });
     }
 
     // Log overall summary
-    console.log(`HMRC Excel generated with ${totalSheets} sheet(s) containing ${processedPayments.length} processed records`);
-    console.log(`High value donations (>£20): ${highValueDonations.length} individual records`);
-    console.log(`Low value donations (≤£20): ${lowValueDonations.length} donations (total: £${lowValueDonations.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2)}) aggregated into ${aggregatedLowValueArray.length} groups (max £1000 per group)`);
+    console.log(
+      `HMRC Excel generated with ${totalSheets} sheet(s) containing ${processedPayments.length} processed records`
+    );
+    console.log(
+      `High value donations (>£20): ${highValueDonations.length} individual records`
+    );
+    console.log(
+      `Low value donations (≤£20): ${
+        lowValueDonations.length
+      } donations (total: £${lowValueDonations
+        .reduce((sum, p) => sum + (p.amount || 0), 0)
+        .toFixed(2)}) aggregated into ${
+        aggregatedLowValueArray.length
+      } groups (max £1000 per group)`
+    );
 
     const filePath = path.join(assetsPath, "donations.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
-    res.json({ 
-      message: "Excel file generated successfully", 
+    res.json({
+      message: "Excel file generated successfully",
       path: filePath,
       totalSheets: totalSheets,
       totalRecords: processedPayments.length,
@@ -304,8 +362,10 @@ router.get("/generate-donations-excel", async (req, res, next) => {
       lowValueDonations: lowValueDonations.length,
       aggregatedLowValueGroups: aggregatedLowValueArray.length,
       maxAmountPerGroup: maxAmountPerGroup,
-      lowValueTotalAmount: lowValueDonations.reduce((sum, p) => sum + (p.amount || 0), 0).toFixed(2),
-      totalDonations: totalDonations.toFixed(2)
+      lowValueTotalAmount: lowValueDonations
+        .reduce((sum, p) => sum + (p.amount || 0), 0)
+        .toFixed(2),
+      totalDonations: totalDonations.toFixed(2),
     });
   } catch (error) {
     next(error);

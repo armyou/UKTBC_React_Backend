@@ -19,37 +19,247 @@ interface EmailCredentials {
 export class EmailService {
   private transporter: nodemailer.Transporter | null = null;
   private credentials: EmailCredentials | null = null;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private tokenExpiresAt: number | null = null;
 
-  // ---- Get Access Token (client_credentials flow) ----
-  private async getAccessToken(
-    clientId: string,
-    clientSecret: string,
-    tenantId: string
-  ): Promise<string> {
+  // ---- Set Tokens from Config ----
+  private setTokensFromConfig(): void {
+    // Get tokens from config (you can add these to your .env file)
+    this.accessToken = process.env.OAUTH_ACCESS_TOKEN || null;
+    this.refreshToken = process.env.OAUTH_REFRESH_TOKEN || null;
+    this.tokenExpiresAt = process.env.OAUTH_TOKEN_EXPIRES_AT
+      ? parseInt(process.env.OAUTH_TOKEN_EXPIRES_AT)
+      : null;
+
+    console.log("Tokens loaded from config:", {
+      hasAccessToken: !!this.accessToken,
+      hasRefreshToken: !!this.refreshToken,
+      expiresAt: this.tokenExpiresAt
+        ? new Date(this.tokenExpiresAt).toISOString()
+        : null,
+    });
+
+    // Check if tokens are expired
+    if (this.tokenExpiresAt) {
+      const now = Date.now();
+      const timeUntilExpiry = this.tokenExpiresAt - now;
+      const isExpired = now >= this.tokenExpiresAt;
+
+      console.log("Token status:", {
+        isExpired,
+        timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
+        currentTime: new Date(now).toISOString(),
+        tokenExpiry: new Date(this.tokenExpiresAt).toISOString(),
+      });
+    }
+  }
+
+  // ---- Refresh Access Token ----
+  private async refreshAccessToken(): Promise<string> {
     try {
+      // Check if we're using client credentials flow (no refresh token)
+      if (
+        !this.refreshToken ||
+        this.refreshToken === "client_credentials_flow"
+      ) {
+        console.log(
+          "Email Service - Using client credentials flow, getting new token..."
+        );
+        return await this.getClientCredentialsToken();
+      }
+
+      console.log("Refreshing access token...");
+
+      const tenantId = config.OAUTH_TENANT_ID;
+      const clientId = config.OAUTH_CLIENT_ID;
+      const clientSecret = config.OAUTH_CLIENT_SECRET;
+
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
-      const requestData = new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: "https://outlook.office365.com/.default", //  for SMTP
-        grant_type: "authorization_code",
-        redirect_uri: "http://localhost:3003/smtpweb",
-        code: "1.Aa8AEcXT6O-4IEW_084Fn2r-17zODwnYQJZGjes0kGCH3tCvACKvAA.AgABBAIAAABlMNzVhAPUTrARzfQjWPtKAwDs_wUA9P_UoMjwzIUKEE_CuxRYW52we38xPLHf0L1o-9-5KFsk0YsVs5TUCHb1q6h4zMscPl7rIEq9D5BqaBdgb2nOnwUdaWojsx0X6WF4SAp4xxA1l_eaGvcoWnjZN2aMNKJPWO8wBb2gTG2dBNOKEt6IeEYvZYveZNqU2FY_7YEQMDMmSBgSCoTTUPh-QVNZX_7BoJtzo9gD1FDo5bifre0f-qYh8_WTwhEhhGhUY0aQpD7PxrcFC-cZzwMkfbDeRnGig-LElWvn6q0ZjZMv3JyFteC9h5QWlE7rH6Qm6usBmnMRat8efRRXkxamDxHCxxrgRKwOCCRdVAlRZBx0RSuefx40PagY7EMA1o7dpJZ-Ygldk6BwQOyMRIaAU_YuR70uAp-kNhvEfDyPz6c462UwSiEcODtL3lrsJoa04spZiZ6yE1WxSzT-iopiWYnfgi4ld8ZqSJ8wgGF5bEx25UbisUyuFrgexQp7b0cSAIzE2bmPRHDXd0odavkbnw7Hm64dQDLOBfrhlhubZrpP3ybEs1yzlg5SNLrSyz_DIwqK8BSCdqv5RZo5iT7Gm4P2Mg0zgVp9sNBerBEmtUfMgvYvQjR9lp04Jk1KFcQfj1RZ1ROi6Ej6Mql_fMV52Fxm0aoBJ7rA-H5AnjDJmHVAnQP3Ol2XFZcJsGyvH823WxxZ2F97QG8ubJ9FDwH4OjxUqxj5D7PsiWxZ3LfsNvg8ywsVBSr0XpcWNAoaHU4HOhFNHQVcD0PF5HnBtR28og",
-      });
+      const requestData = new URLSearchParams([
+        ["client_id", clientId || ""],
+        ["client_secret", clientSecret || ""],
+        ["scope", "offline_access Mail.Send"],
+        ["grant_type", "refresh_token"],
+        ["refresh_token", this.refreshToken],
+      ]);
 
       const response = await axios.post(tokenUrl, requestData, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
-      return response.data.access_token;
+      if (response.data && response.data.access_token) {
+        this.accessToken = response.data.access_token;
+        this.refreshToken =
+          response.data.refresh_token || this.refreshToken || ""; // Keep existing if not provided
+        this.tokenExpiresAt = Date.now() + response.data.expires_in * 1000;
+
+        console.log("Access token refreshed successfully");
+        console.log(
+          "New access token expires at:",
+          new Date(this.tokenExpiresAt).toISOString()
+        );
+
+        return this.accessToken || "";
+      } else {
+        throw new Error("No tokens received from refresh");
+      }
     } catch (error: any) {
-      console.error("OAuth2 token acquisition failed:", error.message);
+      console.error("Failed to refresh access token:", error.message);
       if (error.response) {
         console.error("Response status:", error.response.status);
         console.error("Response data:", error.response.data);
+
+        // Check for OAuth-specific errors
+        if (error.response.status === 400 || error.response.status === 401) {
+          const errorData = error.response.data;
+          if (
+            errorData.error === "invalid_grant" ||
+            errorData.error === "invalid_client" ||
+            errorData.error === "unauthorized_client" ||
+            errorData.error_description?.includes("refresh token") ||
+            errorData.error_description?.includes("expired")
+          ) {
+            console.log("\n🚨 OAUTH AUTHORIZATION FAILED 🚨");
+            console.log("=====================================");
+            console.log("Please get new SMTP tokens:");
+            console.log("1. Run: node get-smtp-tokens.js");
+            console.log("2. Copy the new tokens to your .env file");
+            console.log("3. Restart your server");
+            console.log("=====================================\n");
+          }
+        }
       }
-      throw new Error("Failed to get OAuth2 access token");
+      throw new Error("Failed to refresh access token - please re-authorize");
+    }
+  }
+
+  private async getClientCredentialsToken(): Promise<string> {
+    try {
+      const tenantId = config.OAUTH_TENANT_ID;
+      const clientId = config.OAUTH_CLIENT_ID;
+      const clientSecret = config.OAUTH_CLIENT_SECRET;
+
+      console.log("Email Service - Getting new client credentials token...");
+
+      const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+      const requestData = new URLSearchParams([
+        ["client_id", clientId || ""],
+        ["client_secret", clientSecret || ""],
+        ["scope", "https://outlook.office365.com/.default"],
+        ["grant_type", "client_credentials"],
+      ]);
+
+      const response = await axios.post(tokenUrl, requestData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      });
+
+      if (response.data && response.data.access_token) {
+        this.accessToken = response.data.access_token;
+        this.refreshToken = "client_credentials_flow";
+        this.tokenExpiresAt = Date.now() + response.data.expires_in * 1000;
+
+        console.log("Email Service - New client credentials token obtained");
+        console.log(
+          "Email Service - Token expires at:",
+          new Date(this.tokenExpiresAt).toISOString()
+        );
+
+        return this.accessToken;
+      } else {
+        throw new Error("No tokens received from client credentials flow");
+      }
+    } catch (error: any) {
+      console.error(
+        "Email Service - Failed to get client credentials token:",
+        error.message
+      );
+      throw error;
+    }
+  }
+
+  // ---- Get Valid Access Token ----
+  private async getValidAccessToken(): Promise<string> {
+    try {
+      console.log("Email Service - getValidAccessToken called");
+
+      // Load tokens from config if not already loaded
+      if (!this.accessToken) {
+        console.log("Email Service - No access token, loading from config...");
+        this.setTokensFromConfig();
+      } else {
+        console.log("Email Service - Access token already loaded");
+      }
+
+      // Check if we have tokens
+      if (!this.accessToken) {
+        console.log("\n🚨 NO ACCESS TOKEN AVAILABLE 🚨");
+        console.log("=================================");
+        console.log("Please authorize and get tokens:");
+        console.log(
+          "1. Visit: https://login.microsoftonline.com/e8d3c511-b8ef-4520-bfd3-ce059f6afed7/oauth2/v2.0/authorize?client_id=090fcebc-40d8-4696-8deb-34906087ded0&response_type=code&redirect_uri=http://localhost:3003/smtpweb&response_mode=query&scope=offline_access%20Mail.Send&state=12345"
+        );
+        console.log("2. Complete the OAuth flow");
+        console.log("3. Get the authorization code from the redirect URL");
+        console.log("4. Exchange the code for access_token and refresh_token");
+        console.log("5. Update your .env file with:");
+        console.log("   OAUTH_ACCESS_TOKEN=your_access_token");
+        console.log("   OAUTH_REFRESH_TOKEN=your_refresh_token");
+        console.log("   OAUTH_TOKEN_EXPIRES_AT=expiry_timestamp");
+        console.log("=================================\n");
+        throw new Error(
+          "No access token available. Please set OAUTH_ACCESS_TOKEN in config."
+        );
+      }
+
+      // FIRST: Check if access token is expired (with 5 minute buffer)
+      const bufferTime = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+      const isExpired =
+        this.tokenExpiresAt && now >= this.tokenExpiresAt - bufferTime;
+
+      console.log("Email Service - Token expiry check:", {
+        currentTime: new Date(now).toISOString(),
+        tokenExpiry: this.tokenExpiresAt
+          ? new Date(this.tokenExpiresAt).toISOString()
+          : null,
+        isExpired: isExpired,
+        timeUntilExpiry: this.tokenExpiresAt
+          ? Math.round((this.tokenExpiresAt - now) / 1000 / 60)
+          : null, // minutes
+      });
+
+      if (isExpired) {
+        console.log(
+          "Email Service - Access token expired or expiring soon, refreshing..."
+        );
+        try {
+          return await this.refreshAccessToken();
+        } catch (refreshError: any) {
+          console.error(
+            "Email Service - Token refresh failed:",
+            refreshError.message
+          );
+          console.log("\n🚨 EMAIL SERVICE - TOKEN REFRESH FAILED 🚨");
+          console.log("===========================================");
+          console.log("Please get new SMTP tokens:");
+          console.log("1. Run: node get-smtp-tokens.js");
+          console.log("2. Copy the new tokens to your .env file");
+          console.log("3. Restart your server");
+          console.log("===========================================\n");
+          throw new Error("Token refresh failed - please re-authorize");
+        }
+      } else {
+        console.log(
+          "Email Service - Access token is still valid, using existing token"
+        );
+        return this.accessToken;
+      }
+    } catch (error: any) {
+      console.error("Failed to get valid access token:", error.message);
+      throw new Error("Failed to get valid access token");
     }
   }
 
@@ -100,12 +310,8 @@ export class EmailService {
 
     const tenantId = config.OAUTH_TENANT_ID;
 
-    // 1. Generate access token
-    const accessToken = await this.getAccessToken(
-      config.OAUTH_CLIENT_ID,
-      config.OAUTH_CLIENT_SECRET,
-      tenantId
-    );
+    // 1. Get valid access token (with automatic refresh if needed)
+    const accessToken = await this.getValidAccessToken();
 
     // 2. Print access token (for debug)
     console.log(" Access Token acquired:", accessToken);
@@ -137,6 +343,8 @@ export class EmailService {
         clientId: config.OAUTH_CLIENT_ID,
         clientSecret: config.OAUTH_CLIENT_SECRET,
         accessToken: accessToken,
+        refreshToken: this.refreshToken,
+        expires: this.tokenExpiresAt,
       },
       tls: {
         ciphers: "TLSv1.2",
