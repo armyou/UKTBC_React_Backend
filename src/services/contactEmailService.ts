@@ -5,7 +5,7 @@ import path from "path";
 
 interface ContactEmailCredentials {
   host: string;
-  port: number; 
+  port: number;
   type: string;
   user: string;
   clientId: string;
@@ -17,67 +17,324 @@ interface ContactEmailCredentials {
 export class ContactEmailService {
   private transporter: nodemailer.Transporter | null = null;
   private credentials: ContactEmailCredentials | null = null;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private tokenExpiresAt: number | null = null;
 
-  // ---- Get Access Token (client_credentials flow) ----
-  private async getAccessToken(
-    clientId: string,
-    clientSecret: string,
-    tenantId: string
-  ): Promise<string> {
+  // ---- Set Tokens from Config ----
+  private setTokensFromConfig(): void {
+    console.log("Contact Email - Loading tokens from environment variables...");
+    console.log(
+      "Contact Email - OAUTH_ACCESS_TOKEN exists:",
+      !!config.OAUTH_ACCESS_TOKEN
+    );
+    console.log(
+      "Contact Email - OAUTH_REFRESH_TOKEN exists:",
+      !!config.OAUTH_REFRESH_TOKEN
+    );
+    console.log(
+      "Contact Email - OAUTH_TOKEN_EXPIRES_AT exists:",
+      !!config.OAUTH_TOKEN_EXPIRES_AT
+    );
+
+    this.accessToken = config.OAUTH_ACCESS_TOKEN || null;
+    this.refreshToken = config.OAUTH_REFRESH_TOKEN || null;
+    this.tokenExpiresAt = config.OAUTH_TOKEN_EXPIRES_AT
+      ? parseInt(config.OAUTH_TOKEN_EXPIRES_AT)
+      : null;
+
+    console.log("Contact Email - Tokens loaded from config:", {
+      hasAccessToken: !!this.accessToken,
+      hasRefreshToken: !!this.refreshToken,
+      expiresAt: this.tokenExpiresAt
+        ? new Date(this.tokenExpiresAt).toISOString()
+        : null,
+    });
+
+    // Check if tokens are expired
+    if (this.tokenExpiresAt) {
+      const now = Date.now();
+      const timeUntilExpiry = this.tokenExpiresAt - now;
+      const isExpired = now >= this.tokenExpiresAt;
+
+      console.log("Contact Email - Token status:", {
+        isExpired,
+        timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
+        currentTime: new Date(now).toISOString(),
+        tokenExpiry: new Date(this.tokenExpiresAt).toISOString(),
+      });
+    }
+  }
+
+  // ---- Refresh Access Token ----
+  private async refreshAccessToken(): Promise<string> {
     try {
+      // Check if we're using client credentials flow (no refresh token)
+      if (
+        !this.refreshToken ||
+        this.refreshToken === "client_credentials_flow"
+      ) {
+        console.log(
+          "Contact Email - Using client credentials flow, getting new token..."
+        );
+        return await this.getClientCredentialsToken();
+      }
+
+      console.log("Contact Email - Refreshing access token...");
+      console.log(
+        "Contact Email - Using refresh token:",
+        this.refreshToken?.substring(0, 20) + "..."
+      );
+
+      const tenantId = config.OAUTH_TENANT_ID;
+      const clientId = config.OAUTH_CLIENT_ID;
+      const clientSecret = config.OAUTH_CLIENT_SECRET;
+
+      console.log("Contact Email - OAuth config:", {
+        tenantId,
+        clientId: clientId?.substring(0, 10) + "...",
+        hasClientSecret: !!clientSecret,
+      });
+
       const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
-      const requestData = new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        scope: "https://outlook.office365.com/.default",
-        grant_type: "authorization_code",
-        redirect_uri:'http://localhost:3003/smtpweb',
-        code:'1.Aa8AEcXT6O-4IEW_084Fn2r-17zODwnYQJZGjes0kGCH3tCvACKvAA.AgABBAIAAABlMNzVhAPUTrARzfQjWPtKAwDs_wUA9P-zXuOYpzB1YUfyxAgROwXfMjiLb57F50jRUkVEZ7ePb98n2UND92IriaTfxVrdJ20yH1GRFFQASHSHRd0YZiz-EUoGwTR3VtObAqikgReSOaFtjUjwRmjNKlvYkuV5oPzNkj0kkR2ktIq-ou1bW3fjw_afgWmk6_dPgNadX-_Gs_rRwt8Uzt22lxdEnYUc3z9srCyoracI5q-gcQ3RxWhScnCqfnzXnc3TQ6FzbydfYI0jYOU5DLKTJ6h4VvkPlLEQBRtNPvMqy8g9yPNueGC4oZx5xoJCLrbCjewOCkBAw022iEFlm3IFAXcbBp5ZDqIR2uLsNS-KzcHn5k_EOHdc2McKIwbzZVUAie9XE49gMNaI5iS4ibtHEdH48wQtWB2kyJmbXfCg8wZRJZO409Omvj3ZzL7yJk6PqjCPMV32T6I2U14A2lFyQTJEI5pslEC9Y0FasSKc4hTkxNU1uMC-uB7hhCX9ucQunLsu-knTiqVH-iudvNkc01bzril12Vf3gZXCiX_40hw4j8aJaaEltTvNY_nJTbq-EcHOVYGo9xvZY310j_qmniNK-UJM2VEJcxrEmy1pvvzHpRlfKm61VA7oi8KTEIQHBexQVDrGn23fej7BUR2N8zxDRu4PviYyjVYEqrSPp_pUXJPDgpxWPHdfH1-LwpWur68i7STp-nqW9JzCgRF3sjXZPM8lJ1xqbkikGauk9Z8nc88lhoTPlYU6gWvCPz4Gxr3Nloto_4rH754VkJw50g'
+      const requestData = new URLSearchParams([
+        ["client_id", clientId || ""],
+        ["client_secret", clientSecret || ""],
+        ["scope", "offline_access Mail.Send"],
+        ["grant_type", "refresh_token"],
+        ["refresh_token", this.refreshToken],
+      ]);
+
+      const response = await axios.post(tokenUrl, requestData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
+      console.log("response to get tokens: ", response.data);
+      if (response.data && response.data.access_token) {
+        this.accessToken = response.data.access_token;
+        this.refreshToken =
+          response.data.refresh_token || this.refreshToken || ""; // Keep existing if not provided
+        this.tokenExpiresAt = Date.now() + response.data.expires_in * 1000;
+
+        console.log("Contact Email - Access token refreshed successfully");
+        console.log(
+          "Contact Email - New access token expires at:",
+          new Date(this.tokenExpiresAt).toISOString()
+        );
+
+        return this.accessToken || "";
+      } else {
+        throw new Error("No tokens received from refresh");
+      }
+    } catch (error: any) {
+      console.error(
+        "Contact Email - Failed to refresh access token:",
+        error.message
+      );
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+
+        // Check for OAuth-specific errors
+        if (error.response.status === 400 || error.response.status === 401) {
+          const errorData = error.response.data;
+          if (
+            errorData.error === "invalid_grant" ||
+            errorData.error === "invalid_client" ||
+            errorData.error === "unauthorized_client" ||
+            errorData.error_description?.includes("refresh token") ||
+            errorData.error_description?.includes("expired")
+          ) {
+            console.log("\n🚨 CONTACT EMAIL - OAUTH AUTHORIZATION FAILED 🚨");
+            console.log("==================================================");
+            console.log("Please get new SMTP tokens:");
+            console.log("1. Run: node get-smtp-tokens.js");
+            console.log("2. Copy the new tokens to your .env file");
+            console.log("3. Restart your server");
+            console.log("==================================================\n");
+          }
+        }
+      }
+      throw new Error("Failed to refresh access token - please re-authorize");
+    }
+  }
+
+  private async getClientCredentialsToken(): Promise<string> {
+    try {
+      const tenantId = config.OAUTH_TENANT_ID;
+      const clientId = config.OAUTH_CLIENT_ID;
+      const clientSecret = config.OAUTH_CLIENT_SECRET;
+
+      console.log("Contact Email - Getting new client credentials token...");
+
+      const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+      const requestData = new URLSearchParams([
+        ["client_id", clientId || ""],
+        ["client_secret", clientSecret || ""],
+        ["scope", "https://outlook.office365.com/.default"],
+        ["grant_type", "client_credentials"],
+      ]);
 
       const response = await axios.post(tokenUrl, requestData, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
 
-      return response.data.access_token;
-    } catch (error: any) {
-      console.error("OAuth2 token acquisition failed:", error.message);
-      if (error.response) {
-        console.error("Response status:", error.response.status);
-        console.error("Response data:", error.response.data);
+      if (response.data && response.data.access_token) {
+        this.accessToken = response.data.access_token;
+        this.refreshToken = "client_credentials_flow";
+        this.tokenExpiresAt = Date.now() + response.data.expires_in * 1000;
+
+        console.log("Contact Email - New client credentials token obtained");
+        console.log(
+          "Contact Email - Token expires at:",
+          new Date(this.tokenExpiresAt).toISOString()
+        );
+
+        return this.accessToken;
+      } else {
+        throw new Error("No tokens received from client credentials flow");
       }
-      throw new Error("Failed to get OAuth2 access token");
+    } catch (error: any) {
+      console.error(
+        "Contact Email - Failed to get client credentials token:",
+        error.message
+      );
+      throw error;
+    }
+  }
+
+  // ---- Get Valid Access Token ----
+  private async getValidAccessToken(): Promise<string> {
+    try {
+      console.log("Contact Email - getValidAccessToken called");
+
+      // Load tokens from config if not already loaded
+      if (!this.accessToken) {
+        console.log("Contact Email - No access token, loading from config...");
+        this.setTokensFromConfig();
+      } else {
+        console.log("Contact Email - Access token already loaded");
+      }
+
+      // Check if we have tokens
+      if (!this.accessToken) {
+        console.log("\n🚨 CONTACT EMAIL - NO ACCESS TOKEN AVAILABLE 🚨");
+        console.log("================================================");
+        console.log("Please authorize and get tokens:");
+        console.log(
+          "1. Visit: https://login.microsoftonline.com/e8d3c511-b8ef-4520-bfd3-ce059f6afed7/oauth2/v2.0/authorize?client_id=090fcebc-40d8-4696-8deb-34906087ded0&response_type=code&redirect_uri=http://localhost:3003/smtpweb&response_mode=query&scope=offline_access%20Mail.Send&state=12345"
+        );
+        console.log("2. Complete the OAuth flow");
+        console.log("3. Get the authorization code from the redirect URL");
+        console.log("4. Exchange the code for access_token and refresh_token");
+        console.log("5. Update your .env file with:");
+        console.log("   OAUTH_ACCESS_TOKEN=your_access_token");
+        console.log("   OAUTH_REFRESH_TOKEN=your_refresh_token");
+        console.log("   OAUTH_TOKEN_EXPIRES_AT=expiry_timestamp");
+        console.log("================================================\n");
+        throw new Error(
+          "No access token available. Please set OAUTH_ACCESS_TOKEN in config."
+        );
+      }
+
+      // FIRST: Check if access token is expired (with 5 minute buffer)
+      const bufferTime = 5 * 60 * 1000; // 5 minutes
+      const now = Date.now();
+      const isExpired =
+        this.tokenExpiresAt && now >= this.tokenExpiresAt - bufferTime;
+
+      console.log("Contact Email - Token expiry check:", {
+        currentTime: new Date(now).toISOString(),
+        tokenExpiry: this.tokenExpiresAt
+          ? new Date(this.tokenExpiresAt).toISOString()
+          : null,
+        isExpired: isExpired,
+        timeUntilExpiry: this.tokenExpiresAt
+          ? Math.round((this.tokenExpiresAt - now) / 1000 / 60)
+          : null, // minutes
+      });
+
+      if (isExpired) {
+        console.log(
+          "Contact Email - Access token expired or expiring soon, refreshing..."
+        );
+        try {
+          return await this.refreshAccessToken();
+        } catch (refreshError: any) {
+          console.error(
+            "Contact Email - Token refresh failed:",
+            refreshError.message
+          );
+          console.log("\n🚨 CONTACT EMAIL - TOKEN REFRESH FAILED 🚨");
+          console.log("=============================================");
+          console.log("Please re-authorize and get new tokens:");
+          console.log(
+            "1. Visit: https://login.microsoftonline.com/e8d3c511-b8ef-4520-bfd3-ce059f6afed7/oauth2/v2.0/authorize?client_id=090fcebc-40d8-4696-8deb-34906087ded0&response_type=code&redirect_uri=http://localhost:3003/smtpweb&response_mode=query&scope=offline_access%20Mail.Send&state=12345"
+          );
+          console.log("2. Complete the OAuth flow");
+          console.log("3. Get the authorization code from the redirect URL");
+          console.log(
+            "4. Exchange the code for new access_token and refresh_token"
+          );
+          console.log("5. Update your .env file with:");
+          console.log("   OAUTH_ACCESS_TOKEN=new_access_token");
+          console.log("   OAUTH_REFRESH_TOKEN=new_refresh_token");
+          console.log("   OAUTH_TOKEN_EXPIRES_AT=expiry_timestamp");
+          console.log("=============================================\n");
+          throw new Error("Token refresh failed - please re-authorize");
+        }
+      } else {
+        console.log(
+          "Contact Email - Access token is still valid, using existing token"
+        );
+        return this.accessToken;
+      }
+    } catch (error: any) {
+      console.error(
+        "Contact Email - Failed to get valid access token:",
+        error.message
+      );
+      throw new Error("Failed to get valid access token");
     }
   }
 
   // ---- Initialize Contact Email Service ----
   async initializeCredentials(): Promise<void> {
     try {
+      console.log("Contact Email - initializeCredentials called");
+
       if (
         !config.OAUTH_CLIENT_ID ||
         !config.OAUTH_CLIENT_SECRET ||
         !config.SMTP_FROM_EMAIL ||
         !config.OAUTH_TENANT_ID
       ) {
+        console.log("Contact Email - OAuth2 configuration missing:", {
+          hasClientId: !!config.OAUTH_CLIENT_ID,
+          hasClientSecret: !!config.OAUTH_CLIENT_SECRET,
+          hasFromEmail: !!config.SMTP_FROM_EMAIL,
+          hasTenantId: !!config.OAUTH_TENANT_ID,
+        });
         throw new Error("OAuth2 configuration missing");
       }
 
       const tenantId = config.OAUTH_TENANT_ID;
 
-      // 1. Generate access token
-      const accessToken = await this.getAccessToken(
-        config.OAUTH_CLIENT_ID,
-        config.OAUTH_CLIENT_SECRET,
-        tenantId
-      );
+      // 1. Get valid access token (with automatic refresh if needed)
+      const accessToken = await this.getValidAccessToken();
 
       // 2. Print access token (for debug)
-      // console.log("Contact Email Service - Access Token acquired:", accessToken);
+      console.log(
+        "Contact Email Service - Access Token acquired:",
+        accessToken?.substring(0, 20) + "..."
+      );
 
       // 3. If no access token, stop here
       if (!accessToken) {
-        throw new Error("No access token received, aborting contact email setup");
+        throw new Error(
+          "No access token received, aborting contact email setup"
+        );
       }
 
       // 4. Continue with credentials and transporter setup
@@ -101,7 +358,11 @@ export class ContactEmailService {
           user: "website@UKTBC.org",
           clientId: config.OAUTH_CLIENT_ID,
           clientSecret: config.OAUTH_CLIENT_SECRET,
-          accessToken: accessToken,
+          accessToken: config.OAUTH_ACCESS_TOKEN,
+          refreshToken: config.OAUTH_REFRESH_TOKEN,
+          expires: config.OAUTH_TOKEN_EXPIRES_AT
+            ? parseInt(config.OAUTH_TOKEN_EXPIRES_AT)
+            : undefined,
         },
         tls: {
           ciphers: "TLSv1.2",
@@ -111,8 +372,40 @@ export class ContactEmailService {
 
       // 5. Verify transporter
       if (this.transporter) {
-        await this.transporter.verify();
-        console.log("Contact Email Service - SMTP transporter verified with OAuth2");
+        try {
+          await this.transporter.verify();
+          console.log(
+            "Contact Email Service - SMTP transporter verified with OAuth2"
+          );
+        } catch (verifyError: any) {
+          console.error(
+            "Contact Email - SMTP verification failed:",
+            verifyError.message
+          );
+          if (
+            verifyError.message.includes("OAuth2") ||
+            verifyError.message.includes("auth")
+          ) {
+            console.log("\n🚨 CONTACT EMAIL - OAUTH2 AUTHENTICATION FAILED 🚨");
+            console.log("==================================================");
+            console.log("The access token may be invalid or expired.");
+            console.log("Please re-authorize and get new tokens:");
+            console.log(
+              "1. Visit: https://login.microsoftonline.com/e8d3c511-b8ef-4520-bfd3-ce059f6afed7/oauth2/v2.0/authorize?client_id=090fcebc-40d8-4696-8deb-34906087ded0&response_type=code&redirect_uri=http://localhost:3003/smtpweb&response_mode=query&scope=offline_access%20Mail.Send&state=12345"
+            );
+            console.log("2. Complete the OAuth flow");
+            console.log("3. Get the authorization code from the redirect URL");
+            console.log(
+              "4. Exchange the code for new access_token and refresh_token"
+            );
+            console.log("5. Update your .env file with:");
+            console.log("   OAUTH_ACCESS_TOKEN=new_access_token");
+            console.log("   OAUTH_REFRESH_TOKEN=new_refresh_token");
+            console.log("   OAUTH_TOKEN_EXPIRES_AT=expiry_timestamp");
+            console.log("==================================================\n");
+          }
+          throw verifyError;
+        }
       }
     } catch (error) {
       console.error("Error initializing contact email credentials:", error);
@@ -223,10 +516,14 @@ export class ContactEmailService {
             
             <div class="field">
               <div class="label">Message:</div>
-              <div class="message-box">${contactData.message || "No message provided"}</div>
+              <div class="message-box">${
+                contactData.message || "No message provided"
+              }</div>
             </div>
             
-            ${contactData.fileName ? `
+            ${
+              contactData.fileName
+                ? `
             <div class="field">
               <div class="label">📎 Attachment:</div>
               <div class="value attachment-info">
@@ -234,7 +531,9 @@ export class ContactEmailService {
                 <br><small style="color: #28a745;">✓ File has been attached to this email</small>
               </div>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <div class="field">
               <div class="label">Submission Date:</div>
@@ -254,21 +553,21 @@ export class ContactEmailService {
 
   // ---- Get Recipient Email Based on Category ----
   getRecipientEmail(category: unknown): string {
-  if (typeof category !== "string") {
-    return "info@uktbc.org";
-  }
+    if (typeof category !== "string") {
+      return "info@uktbc.org";
+    }
 
-  switch (category.toLowerCase()) {
-    case "general inquiry":
-    case "support":
-      return "info@uktbc.org";
-    case "donation":
-      return "donate@uktbc.org";
-    case "event":
-      return "volunteer@uktbc.org";
-    default:
-      return "info@uktbc.org";
-  }
+    switch (category.toLowerCase()) {
+      case "general inquiry":
+      case "support":
+        return "info@uktbc.org";
+      case "donation":
+        return "donate@uktbc.org";
+      case "event":
+        return "volunteer@uktbc.org";
+      default:
+        return "info@uktbc.org";
+    }
   }
 }
 

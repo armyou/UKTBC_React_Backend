@@ -25,6 +25,10 @@ export const config = {
   OAUTH_APP_ID_URI: process.env.OAUTH_APP_ID_URI,
   OAUTH_TENANT_ID: process.env.OAUTH_TENANT_ID,
   SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
+  // OAuth Tokens
+  OAUTH_ACCESS_TOKEN: process.env.OAUTH_ACCESS_TOKEN,
+  OAUTH_REFRESH_TOKEN: process.env.OAUTH_REFRESH_TOKEN,
+  OAUTH_TOKEN_EXPIRES_AT: process.env.OAUTH_TOKEN_EXPIRES_AT,
 };
 
 export default config;
