@@ -66,3 +66,7 @@ export const updatePaypalOrder = async (
     { new: true }
   );
 };
+// to get all donations
+export const getAllPayments = async (): Promise<PaymentDocument[]> => {
+  return await Payment.find().sort({ createdAt: -1 });
+};

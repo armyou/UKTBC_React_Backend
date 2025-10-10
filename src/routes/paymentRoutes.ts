@@ -117,7 +117,12 @@ router.post(
             undefined,
             updatedPayment._id?.toString()
           );
-          await emailService.sendDonationReceipt(updatedPayment, undefined, "yes", undefined);
+          await emailService.sendDonationReceipt(
+            updatedPayment,
+            undefined,
+            "yes",
+            undefined
+          );
           console.log("Donation receipt email sent successfully");
         } catch (emailError) {
           console.error("Error sending donation receipt email:", emailError);
@@ -158,8 +163,8 @@ router.post(
         ],
         mode: "payment",
         success_url:
-          "http://localhost:5173/donate-now?success=true&session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: "http://localhost:5173/donate-now?canceled=true",
+          "https://server.jagbandhu.com/donate-now?success=true&session_id={CHECKOUT_SESSION_ID}",
+        cancel_url: "https://server.jagbandhu.com/donate-now?canceled=true",
         customer_email: email,
         metadata: { ...otherData, firstName, lastName, email, amount },
       });
@@ -203,7 +208,12 @@ router.get(
       if (session.payment_status === "paid" && updatedPayment) {
         try {
           await emailService.initializeCredentials(session.id, undefined);
-          await emailService.sendDonationReceipt(updatedPayment, undefined, "yes", undefined);
+          await emailService.sendDonationReceipt(
+            updatedPayment,
+            undefined,
+            "yes",
+            undefined
+          );
           console.log("Donation receipt email sent successfully");
         } catch (emailError) {
           console.error("Error sending donation receipt email:", emailError);
@@ -229,15 +239,15 @@ router.post(
     try {
       console.log("Request body:", req.body);
 
-      const { 
-        sessionId, 
-        status, 
-        paymentId, 
-        senderEmail, 
-        giftAidValue, 
-        donationType, 
-        currentYear, 
-        sourceCode 
+      const {
+        sessionId,
+        status,
+        paymentId,
+        senderEmail,
+        giftAidValue,
+        donationType,
+        currentYear,
+        sourceCode,
       } = req.body;
       console.log("Extracted values:", {
         sessionId,
@@ -286,18 +296,28 @@ router.post(
       console.log(`Payment status is now: ${updatedPayment.status}`);
 
       // Generate receipt ID
-      const generateReceiptId = (giftAidValue: string, currentYear: number, donationType: string, sourceCode: string): string => {
+      const generateReceiptId = (
+        giftAidValue: string,
+        currentYear: number,
+        donationType: string,
+        sourceCode: string
+      ): string => {
         // Get the next sequence number (you might want to store this in a database)
         // For now, using timestamp as sequence
         const sequence = Date.now().toString().slice(-4); // Last 4 digits of timestamp
-        
+
         const giftAidPrefix = giftAidValue === "yes" ? "GA" : "NG";
         const donorType = donationType === "no" ? "IND" : "CORP";
-        
+
         return `${giftAidPrefix}${currentYear}${donorType}${sourceCode}${sequence}`;
       };
 
-      const receiptId = generateReceiptId(giftAidValue, currentYear, donationType, sourceCode);
+      const receiptId = generateReceiptId(
+        giftAidValue,
+        currentYear,
+        donationType,
+        sourceCode
+      );
       console.log("Generated receipt ID:", receiptId);
 
       // Send email receipt if payment is successful
