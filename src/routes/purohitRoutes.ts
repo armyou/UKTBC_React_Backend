@@ -125,14 +125,24 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const list = await PurohitRepo.getAll();
-    const updatedlist = list.map((item) => {
-      const base64File = item.filePath ? fileToBase64(item.filePath) : null;
+
+    const updatedList = list.map((item) => {
+      const obj = item.toObject?.() ?? item;
+
+      // Generate accessible file URL
+      const fileUrl = obj.filePath
+        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+            obj.filePath
+          )}`
+        : null;
+
       return {
-        ...(item.toObject?.() ?? item), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: fileUrl,
       };
     });
-    res.json(updatedlist);
+
+    res.json(updatedList);
   } catch (err) {
     console.error("Error fetching purohits:", err);
     res.status(500).json({ error: "Failed to fetch purohit list" });

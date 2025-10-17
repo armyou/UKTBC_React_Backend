@@ -4,6 +4,7 @@ import { generateDonationReceiptPDF } from "../services/pdfService";
 import config from "../config";
 import path from "path";
 import axios from "axios";
+import fs from "fs";
 
 interface EmailCredentials {
   host: string;
@@ -149,7 +150,8 @@ export class EmailService {
         ["client_id", clientId || ""],
         ["client_secret", clientSecret || ""],
         ["scope", "https://outlook.office365.com/.default"],
-        ["grant_type", "client_credentials"],
+        ["grant_type", "authorization_code"],
+        ["code", fs.readFileSync("code.txt", "utf-8") || ""],
       ]);
 
       const response = await axios.post(tokenUrl, requestData, {
@@ -167,7 +169,7 @@ export class EmailService {
           new Date(this.tokenExpiresAt).toISOString()
         );
 
-        return this.accessToken;
+        return this.accessToken || "";
       } else {
         throw new Error("No tokens received from client credentials flow");
       }
@@ -195,7 +197,7 @@ export class EmailService {
 
       // Check if we have tokens
       if (!this.accessToken) {
-        console.log("\n🚨 NO ACCESS TOKEN AVAILABLE 🚨");
+        console.log(" NO ACCESS TOKEN AVAILABLE");
         console.log("=================================");
         console.log("Please authorize and get tokens:");
         console.log(
@@ -242,7 +244,7 @@ export class EmailService {
             "Email Service - Token refresh failed:",
             refreshError.message
           );
-          console.log("\n🚨 EMAIL SERVICE - TOKEN REFRESH FAILED 🚨");
+          console.log("EMAIL SERVICE - TOKEN REFRESH FAILED");
           console.log("===========================================");
           console.log("Please get new SMTP tokens:");
           console.log("1. Run: node get-smtp-tokens.js");

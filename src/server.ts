@@ -19,7 +19,9 @@ import hrmcRoutes from "./routes/downloadHMRCRoutes";
 import smtpweb from "./routes/smtpweb";
 import contactUsRoutes from "./routes/contactUsRoute";
 import getAllDonationsRoutes from "./routes/getAllDonationsRote";
+import getAdminDashBoardRoutes from "./routes/getadmindashboarddata";
 import morgan from "morgan";
+import path from "path";
 
 dotenv.config();
 
@@ -32,6 +34,7 @@ app.use(morgan(":method :url :status :response-time ms"));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/files", express.static(path.join(process.cwd(), "assets")));
 
 // Health check route
 app.get("/", (req, res) => {
@@ -60,6 +63,7 @@ app.use("/api/hrmc", hrmcRoutes);
 app.use("/smtpweb", smtpweb);
 app.use("/api/contactUs", contactUsRoutes);
 app.use("/api/web/admin/donations", getAllDonationsRoutes);
+app.use("/api/web/admin/dashboard", getAdminDashBoardRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})

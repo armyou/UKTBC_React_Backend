@@ -16,6 +16,7 @@ export interface ProjectsDocument extends Document {
   impactPoints: string[];
   projectType: string;
   highlights: string[];
+  benificiaries: string;
   events: Event[]; // Array of event sub-documents
   filePath: string;
   status: string;
@@ -41,6 +42,7 @@ const ProjectsSchema = new Schema<ProjectsDocument>(
     impactPoints: [{ type: String }],
     projectType: { type: String },
     highlights: [{ type: String }],
+    benificiaries: { type: String },
     events: [EventSchema], // Array of event objects
     filePath: { type: String },
     status: {

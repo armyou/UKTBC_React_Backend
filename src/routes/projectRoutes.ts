@@ -39,8 +39,15 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
   console.log("Body: ", req.body);
   console.log("File: ", req.file);
   try {
-    const { projectTitle, tagline, description, vision, projectType, status } =
-      req.body;
+    const {
+      projectTitle,
+      tagline,
+      description,
+      vision,
+      projectType,
+      benificiaries,
+      status,
+    } = req.body;
     console.log(req.body);
     const impactPoints = normalizeToArray(req.body.impactPoints);
     const highlights = normalizeToArray(req.body.highlights);
@@ -53,6 +60,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
       tagline,
       description,
       vision,
+      benificiaries,
       impactPoints,
       projectType,
       highlights,
@@ -165,13 +173,24 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const projects = await ProjectRepo.getAllProjects();
-    const projectsData = projects.map((list) => {
-      const base64File = list.filePath ? fileToBase64(list.filePath) : null;
+
+    // Helper to build a public file URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+            filePath
+          )}`
+        : null;
+
+    // Map projects and replace filePath with URL
+    const projectsData = projects.map((project) => {
+      const obj = project.toObject?.() ?? project;
       return {
-        ...(list.toObject?.() ?? list), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
+
     res.json(projectsData);
   } catch (err) {
     console.error("Error fetching projects:", err);
@@ -189,17 +208,19 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Convert to base64 if filePath exists
-    const base64File = project.filePath
-      ? await fileToBase64(project.filePath)
+    const obj = project.toObject?.() ?? project;
+
+    // Generate public file URL if available
+    const fileUrl = obj.filePath
+      ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+          obj.filePath
+        )}`
       : null;
 
-    const projectDetails = {
-      ...(project.toObject?.() ?? project), // handle Mongoose doc or plain object
-      filePath: base64File,
-    };
-
-    res.json(projectDetails);
+    res.json({
+      ...obj,
+      filePath: fileUrl,
+    });
   } catch (err) {
     console.error("Error fetching project:", err);
     res.status(500).json({ error: "Failed to fetch project" });

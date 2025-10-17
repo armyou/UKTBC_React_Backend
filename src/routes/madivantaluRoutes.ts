@@ -126,17 +126,28 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const lists = await MadiVantaluRepo.getAll();
+
+    //  Helper to convert local path → public URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+            filePath
+          )}`
+        : null;
+
+    //  Map MadiVantalu data with file URLs
     const madiVantalu = lists.map((list) => {
-      const base64File = list.filePath ? fileToBase64(list.filePath) : null;
+      const obj = list.toObject?.() ?? list;
       return {
-        ...(list.toObject?.() ?? list), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
+
     res.json(madiVantalu);
   } catch (err) {
-    console.error("Error fetching caterers:", err);
-    res.status(500).json({ error: "Failed to fetch caterers" });
+    console.error("Error fetching madi vantalu:", err);
+    res.status(500).json({ error: "Failed to fetch madi vantalu" });
   }
 });
 

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { VipravaniRepo } from "../repos/vipravaniRepo";
-import upload from "../middleware/pdfUpload";
-import { fileToBase64 } from "../middleware/filetobase64converter";
+import { upload } from "../middleware/pdfUpload";
 import fs from "fs/promises";
 import path from "path";
 
@@ -112,13 +111,23 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const vipravaniLists = await VipravaniRepo.getAll();
+
     const vipravani = vipravaniLists.map((list) => {
-      const base64File = list.filePath ? fileToBase64(list.filePath) : null;
+      const obj = list.toObject?.() ?? list;
+
+      // Convert filePath to URL if it exists
+      const fileUrl = obj.filePath
+        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+            obj.filePath
+          )}`
+        : null;
+
       return {
-        ...(list.toObject?.() ?? list), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: fileUrl,
       };
     });
+
     res.json(vipravani);
   } catch (err) {
     console.error("Error fetching vipravani:", err);
@@ -131,10 +140,24 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const vipravani = await VipravaniRepo.getById(id);
+
     if (!vipravani) {
       return res.status(404).json({ error: "Vipravani not found" });
     }
-    res.json(vipravani);
+
+    const obj = vipravani.toObject?.() ?? vipravani;
+
+    // Convert filePath to URL
+    const fileUrl = obj.filePath
+      ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+          obj.filePath
+        )}`
+      : null;
+
+    res.json({
+      ...obj,
+      filePath: fileUrl,
+    });
   } catch (err) {
     console.error("Error fetching vipravani:", err);
     res.status(500).json({ error: "Failed to fetch vipravani" });
