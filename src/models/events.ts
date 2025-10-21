@@ -4,6 +4,7 @@ export interface eventDocument extends Document {
   startDate: string;
   startTime: string;
   description: string;
+  eventLocation: string;
   ticketPrice: string;
   availableTickets: string;
   preRequisites: string[];
@@ -17,6 +18,7 @@ const EventSchema = new Schema<eventDocument>(
     startDate: { type: String, required: true },
     startTime: { type: String, required: true },
     description: { type: String, required: true },
+    eventLocation: { type: String, required: true },
     ticketPrice: { type: String, required: true },
     availableTickets: { type: String, required: true },
     preRequisites: [{ type: String, required: true }],
