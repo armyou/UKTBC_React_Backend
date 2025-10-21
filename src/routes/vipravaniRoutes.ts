@@ -117,9 +117,7 @@ router.get("/", async (req, res) => {
 
       // Convert filePath to URL if it exists
       const fileUrl = obj.filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            obj.filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
         : null;
 
       return {
@@ -149,9 +147,7 @@ router.get("/:id", async (req, res) => {
 
     // Convert filePath to URL
     const fileUrl = obj.filePath
-      ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-          obj.filePath
-        )}`
+      ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
       : null;
 
     res.json({
