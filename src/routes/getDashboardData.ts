@@ -25,7 +25,7 @@ router.get("/latest", async (req, res) => {
     // Helper to build full public file URL
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
+        ? `https://${req.get("host")}/files/${path.basename(
             filePath
           )}`
         : null;
