@@ -23,6 +23,7 @@ export interface PaymentDocument extends Document {
   paypalOrderId: string; // NEW
   status: string;
   createdDate: string;
+  createdAt: Date;
 }
 
 const PaymentSchema = new Schema<PaymentDocument>(

@@ -42,6 +42,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
     const {
       projectTitle,
       tagline,
+      introduction,
       description,
       vision,
       projectType,
@@ -58,6 +59,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
     const project = await ProjectRepo.createProject({
       projectTitle,
       tagline,
+      introduction,
       description,
       vision,
       benificiaries,

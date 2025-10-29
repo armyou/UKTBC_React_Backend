@@ -26,13 +26,14 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
   console.log("File:", req.file);
   try {
     console.log(req.body);
-    const { catererName, mobile, status } = req.body;
+    const { catererName, mobile, status, contactPersonName } = req.body;
     const filePath = req.file ? req.file.path : "";
     const serviceLocations = normalizeToArray(req.body.serviceLocations);
     console.log("serviceLocations: ", serviceLocations);
 
     const madiVantalu = await MadiVantaluRepo.create({
       catererName,
+      contactPersonName,
       serviceLocations,
       mobile,
       filePath,
