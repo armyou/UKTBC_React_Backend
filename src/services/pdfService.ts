@@ -114,7 +114,6 @@ export async function generateDonationReceiptPDF(
       doc
         .fontSize(12)
         .text(`Namaste ${greetingName},`, leftX, currentY)
-        .moveDown(1)
         .text(
           "We are grateful for your generous donation in support of our work.",
           leftX,
@@ -124,7 +123,7 @@ export async function generateDonationReceiptPDF(
       currentY += 60;
 
       // Donation details
-      doc.fontSize(12).text("Donation Details:", leftX, currentY).moveDown(0.5);
+      doc.fontSize(12).text("Donation Details:", leftX, currentY);
 
       // Calculate Gift Aid amount and status
       const giftAidAmount =
@@ -193,7 +192,6 @@ export async function generateDonationReceiptPDF(
             currentY,
             { width: 500, align: "center" }
           )
-          .moveDown(1)
           .text(
             "If I pay Income Tax at the higher or additional rate, I can claim the difference between my rate and the basic rate on my Self Assessment tax return.",
             leftX,
@@ -206,10 +204,8 @@ export async function generateDonationReceiptPDF(
       }
 
       // Bottom line after Gift Aid
-      const pageHeight = 842; // A4
-      const bottomMargin = 50;
-      const moveUp = (pageHeight - currentY - bottomMargin) * 0.48; // 48% upward
-      currentY += 140 - moveUp;
+      // Add spacing before the horizontal line
+      currentY += 40;
 
       doc.moveTo(50, currentY).lineTo(545, currentY).stroke();
 
