@@ -23,9 +23,7 @@ router.get("/latest", async (req, res) => {
     // Helper to build full file URL (used for both filePath and previewImage)
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     // Common function to format resource data

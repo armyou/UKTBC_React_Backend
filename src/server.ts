@@ -20,6 +20,7 @@ import smtpweb from "./routes/smtpweb";
 import contactUsRoutes from "./routes/contactUsRoute";
 import getAllDonationsRoutes from "./routes/getAllDonationsRote";
 import getAdminDashBoardRoutes from "./routes/getadmindashboarddata";
+import paymentReceiptRoutes from "./routes/paymentRecieptRoutes";
 import morgan from "morgan";
 import path from "path";
 
@@ -64,6 +65,7 @@ app.use("/smtpweb", smtpweb);
 app.use("/api/contactUs", contactUsRoutes);
 app.use("/api/web/admin/donations", getAllDonationsRoutes);
 app.use("/api/web/admin/dashboard", getAdminDashBoardRoutes);
+app.use("/api/receipt", paymentReceiptRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})
