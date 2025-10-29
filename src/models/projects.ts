@@ -11,6 +11,7 @@ export interface Event {
 export interface ProjectsDocument extends Document {
   projectTitle: string;
   tagline: string;
+  introduction: string;
   description: string;
   vision: string;
   impactPoints: string[];
@@ -37,6 +38,7 @@ const ProjectsSchema = new Schema<ProjectsDocument>(
   {
     projectTitle: { type: String, required: true },
     tagline: { type: String },
+    introduction: { type: String },
     description: { type: String },
     vision: { type: String },
     impactPoints: [{ type: String }],

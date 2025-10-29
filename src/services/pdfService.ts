@@ -70,13 +70,16 @@ export async function generateDonationReceiptPDF(
 
       // Donor address section
       doc.fontSize(12).text("Donor Address:", leftX, currentY);
+
+      // Display name with company name if it's a corporate donation
+      const displayName =
+        payment.corpDonation === "yes" && payment.companyName
+          ? `${payment.title}. ${payment.firstName} ${payment.lastName}\n${payment.companyName}`
+          : `${payment.title}. ${payment.firstName} ${payment.lastName}`;
+
       doc
         .fontSize(10)
-        .text(
-          `${payment.title}. ${payment.firstName} ${payment.lastName}`,
-          leftX,
-          currentY + 20
-        )
+        .text(displayName, leftX, currentY + 20)
         .text(payment.addressLine1, leftX, currentY + 40)
         .text(payment.addressLine2 || "", leftX, currentY + 55)
         .text(payment.addressLine3 || "", leftX, currentY + 70)
@@ -93,7 +96,9 @@ export async function generateDonationReceiptPDF(
           currentY + 20
         )
         .text(
-          `Receipt No: ${receiptId || payment._id.toString().slice(-8).toUpperCase()}`,
+          `Receipt No: ${
+            receiptId || payment._id.toString().slice(-8).toUpperCase()
+          }`,
           rightX,
           currentY + 40
         );
@@ -101,9 +106,14 @@ export async function generateDonationReceiptPDF(
       currentY += 140;
 
       // Greeting
+      const greetingName =
+        payment.corpDonation === "yes" && payment.companyName
+          ? `${payment.firstName} (${payment.companyName})`
+          : payment.firstName;
+
       doc
         .fontSize(12)
-        .text(`Namaste ${payment.firstName},`, leftX, currentY)
+        .text(`Namaste ${greetingName},`, leftX, currentY)
         .moveDown(1)
         .text(
           "We are grateful for your generous donation in support of our work.",
@@ -159,21 +169,41 @@ export async function generateDonationReceiptPDF(
       currentY += 80;
 
       // Gift Aid declarations
-      doc
-        .fontSize(9)
-        .text(
-          "I confirm I am a UK taxpayer and understand that if I pay less Income Tax and/or Capital Gains Tax than the amount of Gift Aid claimed on all my donations in that tax year, it is my responsibility to pay the difference.",
-          leftX,
-          currentY,
-          { width: 500 }
-        )
-        .moveDown(1)
-        .text(
-          "If I pay Income Tax at the higher or additional rate, I can claim the difference between my rate and the basic rate on my Self Assessment tax return.",
-          leftX,
-          currentY + 40,
-          { width: 500 }
-        );
+      if (payment.donationType === "fundraising") {
+        // Add more space above for fundraising message
+        currentY += 20;
+
+        doc
+          .fontSize(9)
+          .text(
+            "Gift Aid has not been claimed on this donation as no Gift Aid declaration was provided.",
+            leftX,
+            currentY,
+            { width: 500, align: "center" }
+          );
+
+        // Reduce space below for fundraising message
+        currentY += 30;
+      } else {
+        doc
+          .fontSize(9)
+          .text(
+            "I confirm I am a UK taxpayer and understand that if I pay less Income Tax and/or Capital Gains Tax than the amount of Gift Aid claimed on all my donations in that tax year, it is my responsibility to pay the difference.",
+            leftX,
+            currentY,
+            { width: 500, align: "center" }
+          )
+          .moveDown(1)
+          .text(
+            "If I pay Income Tax at the higher or additional rate, I can claim the difference between my rate and the basic rate on my Self Assessment tax return.",
+            leftX,
+            currentY + 40,
+            { width: 500, align: "center" }
+          );
+
+        // Keep original spacing for regular Gift Aid declaration
+        currentY += 140;
+      }
 
       // Bottom line after Gift Aid
       const pageHeight = 842; // A4
@@ -188,8 +218,10 @@ export async function generateDonationReceiptPDF(
       // Footer
       doc
         .fontSize(8)
-        .text("UK Telugu Brahmin Community", { align: "center" })
-        .text("donate@uktbc.org | www.uktbc.org", { align: "center" });
+        .text("UK Telugu Brahmin Community", 50, currentY, { align: "center" })
+        .text("donate@uktbc.org | www.uktbc.org", 50, currentY + 15, {
+          align: "center",
+        });
 
       doc.end();
     } catch (error) {

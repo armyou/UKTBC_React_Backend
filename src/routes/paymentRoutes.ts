@@ -73,7 +73,7 @@ router.post(
         amount,
         paymentReference,
         donationType,
-        giftAid,
+        giftAid: giftAid || req.body.giftAidClaim, // Use giftAidClaim if giftAid is not provided
         paymentType,
         status,
       });
@@ -148,7 +148,7 @@ router.post(
     console.log("getting req: ", req.body);
     try {
       const { amount, email, firstName, lastName, ...otherData } = req.body;
-
+      console.log("otherData: ", otherData);
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
@@ -162,8 +162,10 @@ router.post(
           },
         ],
         mode: "payment",
-        success_url: `${url.frontUrl}/donate-now?success=true&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${url.frontUrl}/donate-now?canceled=true`,
+        // success_url: `${url.frontUrl}/donate-now?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        // cancel_url: `${url.frontUrl}/donate-now?canceled=true`,
+        success_url: `http://localhost:5173/donate-now?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `http://localhost:5173/donate-now?canceled=true`,
         customer_email: email,
         metadata: { ...otherData, firstName, lastName, email, amount },
       });
@@ -175,6 +177,7 @@ router.post(
         amount,
         stripeSessionId: session.id, // Only set this for checkout sessions
         ...otherData,
+        giftAid: otherData.giftAidClaim, // Map giftAidClaim to giftAid
       });
 
       res.status(200).json({
