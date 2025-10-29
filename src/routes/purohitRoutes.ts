@@ -131,9 +131,7 @@ router.get("/", async (req, res) => {
 
       // Generate accessible file URL
       const fileUrl = obj.filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            obj.filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
         : null;
 
       return {

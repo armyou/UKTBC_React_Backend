@@ -131,9 +131,7 @@ router.get("/", async (req, res) => {
     //  Helper to convert local path → public URL
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     //  Map MadiVantalu data with file URLs

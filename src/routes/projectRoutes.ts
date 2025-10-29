@@ -179,9 +179,7 @@ router.get("/", async (req, res) => {
     // Helper to build a public file URL
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     // Map projects and replace filePath with URL
@@ -214,9 +212,7 @@ router.get("/:id", async (req, res) => {
 
     // Generate public file URL if available
     const fileUrl = obj.filePath
-      ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-          obj.filePath
-        )}`
+      ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
       : null;
 
     res.json({

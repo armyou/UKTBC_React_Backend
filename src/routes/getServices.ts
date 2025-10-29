@@ -15,9 +15,7 @@ router.get("/latest", async (req, res) => {
     //  Helper to convert local path → public URL
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     //  Format purohits with public URLs

@@ -153,9 +153,7 @@ router.get("/", async (req, res) => {
 
       // Build file URL if filePath exists
       const fileUrl = obj.filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            obj.filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
         : null;
 
       return {
@@ -181,9 +179,7 @@ router.get("/categorisedEvents", async (req, res) => {
     // Helper to build file URL
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     // Map upcoming events with URLs
@@ -228,9 +224,7 @@ router.get("/:id", async (req, res) => {
     // Build file URL using your static route
     const buildFileUrl = (filePath?: string) =>
       filePath
-        ? `${req.protocol}://${req.get("host")}/files/${path.basename(
-            filePath
-          )}`
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
 
     // Convert Mongoose doc if needed
