@@ -25,4 +25,7 @@ export class FooterRepo {
       }
     );
   }
+  static async getAll() {
+    return await FooterModel.find();
+  }
 }

@@ -20,4 +20,17 @@ router.put("/counter", async (req, res) => {
   }
 });
 
+router.get("/counter", async (req, res) => {
+  try {
+    const allCounters = await FooterRepo.getAll();
+    res.json({
+      message: "Fetched all counters successfully",
+      data: allCounters,
+    });
+  } catch (error) {
+    console.error("Error fetching count:", error);
+    res.status(500).json({ error: "Failed to fetch count" });
+  }
+});
+
 export default router;

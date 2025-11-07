@@ -150,6 +150,8 @@ export const getDonationStats = async (): Promise<DonationStats> => {
         email: 1,
         mobile: 1,
         amount: 1,
+        donationType: 1,
+        giftAid: 1,
         status: 1,
         createdAt: 1,
       }
