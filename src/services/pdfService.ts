@@ -2,6 +2,20 @@ import PDFDocument from "pdfkit";
 import Payment from "../models/payments";
 import path from "path";
 
+// Helper function to format date as dd/mm/yyyy
+function formatDateDDMMYYYY(date: Date): string {
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Helper function to capitalize first letter of title
+function capitalizeTitle(title: string): string {
+  if (!title) return title;
+  return title.charAt(0).toUpperCase() + title.slice(1).toLowerCase();
+}
+
 export async function generateDonationReceiptPDF(
   payment: any,
   giftAid: string,
@@ -68,39 +82,57 @@ export async function generateDonationReceiptPDF(
       const leftX = 50;
       const rightX = 300;
 
-      // Donor address section
-      doc.fontSize(12).text("Donor Address:", leftX, currentY);
-
       // Display name with company name if it's a corporate donation
+      const capitalizedTitle = capitalizeTitle(payment.title || "");
       const displayName =
         payment.corpDonation === "yes" && payment.companyName
-          ? `${payment.title}. ${payment.firstName} ${payment.lastName}\n${payment.companyName}`
-          : `${payment.title}. ${payment.firstName} ${payment.lastName}`;
+          ? `${capitalizedTitle}. ${payment.firstName} ${payment.lastName}\n${payment.companyName}`
+          : `${capitalizedTitle}. ${payment.firstName} ${payment.lastName}`;
 
-      doc
-        .fontSize(10)
-        .text(displayName, leftX, currentY + 20)
-        .text(payment.addressLine1, leftX, currentY + 40)
-        .text(payment.addressLine2 || "", leftX, currentY + 55)
-        .text(payment.addressLine3 || "", leftX, currentY + 70)
-        .text(payment.city, leftX, currentY + 85)
-        .text(payment.postCode, leftX, currentY + 100);
+      // Build address lines array, filtering out empty/null values
+      const addressLines: string[] = [];
+      if (payment.addressLine1 && payment.addressLine1.trim()) addressLines.push(payment.addressLine1.trim());
+      if (payment.addressLine2 && payment.addressLine2.trim()) addressLines.push(payment.addressLine2.trim());
+      if (payment.addressLine3 && payment.addressLine3.trim()) addressLines.push(payment.addressLine3.trim());
+
+      // Display name
+      doc.fontSize(10).text(displayName, leftX, currentY + 20);
+
+      // Display address lines dynamically
+      let addressY = currentY + 40;
+      addressLines.forEach((line) => {
+        doc.text(line, leftX, addressY);
+        addressY += 15;
+      });
+
+      // Display city and postcode
+      if (payment.city && payment.city.trim()) {
+        doc.text(payment.city.trim(), leftX, addressY);
+        addressY += 15;
+      }
+      if (payment.postCode && payment.postCode.trim()) {
+        doc.text(payment.postCode.trim(), leftX, addressY);
+      }
+
+      // Receipt details - aligned with address section
+      // Add more white space on the left and reduce width
+      const receiptDetailsY = currentY + 20;
+      const receiptDetailsX = 350; // More left margin (moved from 300)
+      const receiptDetailsWidth = 195; // Reduced width (545 - 350)
 
       // Receipt details
-      doc.fontSize(12).text("Receipt Details:", rightX, currentY);
       doc
         .fontSize(10)
-        .text(
-          `Date: ${new Date().toLocaleDateString("en-US")}`,
-          rightX,
-          currentY + 20
-        )
+        .text(`Date: ${formatDateDDMMYYYY(new Date())}`, receiptDetailsX, receiptDetailsY, {
+          width: receiptDetailsWidth
+        })
         .text(
           `Receipt No: ${
             receiptId || payment._id.toString().slice(-8).toUpperCase()
           }`,
-          rightX,
-          currentY + 40
+          receiptDetailsX,
+          receiptDetailsY + 20,
+          { width: receiptDetailsWidth }
         );
 
       currentY += 140;
@@ -122,7 +154,7 @@ export async function generateDonationReceiptPDF(
 
       currentY += 60;
 
-      // Donation details
+      // Donation details title
       doc.fontSize(12).text("Donation Details:", leftX, currentY);
 
       // Calculate Gift Aid amount and status
@@ -131,17 +163,38 @@ export async function generateDonationReceiptPDF(
       const giftAidDisplay =
         giftAid === "yes" ? `Yes - £${giftAidAmount}` : "No";
 
+      // Donation details with labels and values
       const donationDetails = [
-        `Donation Date: ${new Date().toLocaleDateString("en-GB")}`,
-        `Donation for: ${payment.paymentReference || "General Donation"}`,
-        `Mode of transfer: ${payment.paymentType}`,
-        `Donation amount: £${payment.amount.toFixed(2)}`,
-        `Gift Aid (UK Tax Payer): ${giftAidDisplay}`,
+        { label: "Donation Date:", value: formatDateDDMMYYYY(new Date()) },
+        {
+          label: "Donation for:",
+          value: payment.paymentReference || "General Donation",
+        },
+        { label: "Mode of transfer:", value: payment.paymentType },
+        {
+          label: "Donation amount:",
+          value: `£${payment.amount.toFixed(2)}`,
+        },
+        { label: "Gift Aid (UK Tax Payer):", value: giftAidDisplay },
       ];
 
+      // Display donation details below the title
+      // Labels aligned left, values aligned left (starting after labels)
       doc.fontSize(10);
+      const detailStartY = currentY + 20;
+      const labelStartX = leftX + 20;
+      const valueStartX = 450; // Start position for values (more space after labels)
+      const valueWidth = 125; // Width for values (545 - 350)
+      
       donationDetails.forEach((detail, index) => {
-        doc.text(detail, leftX + 20, currentY + 30 + index * 15);
+        const yPos = detailStartY + index * 15;
+        // Label aligned left
+        doc.text(detail.label, labelStartX, yPos);
+        // Value aligned left - starting after the label
+        doc.text(detail.value, valueStartX, yPos, { 
+          width: valueWidth,
+          align: "left" 
+        });
       });
 
       currentY += 120;
@@ -181,8 +234,8 @@ export async function generateDonationReceiptPDF(
             { width: 500, align: "center" }
           );
 
-        // Reduce space below for fundraising message
-        currentY += 30;
+        // Position after fundraising message - add minimal gap before line
+        currentY += 15; // Small gap after the message
       } else {
         doc
           .fontSize(9)
@@ -199,13 +252,12 @@ export async function generateDonationReceiptPDF(
             { width: 500, align: "center" }
           );
 
-        // Keep original spacing for regular Gift Aid declaration
-        currentY += 140;
+        // Position currentY after the second paragraph
+        // Second paragraph starts at currentY + 40, add small gap for text height and spacing
+        currentY = currentY + 40 + 20; // End of second paragraph + small gap
       }
 
-      // Bottom line after Gift Aid
-      // Add spacing before the horizontal line
-      currentY += 40;
+      // Bottom line after Gift Aid - draw the line at current position
 
       doc.moveTo(50, currentY).lineTo(545, currentY).stroke();
 
