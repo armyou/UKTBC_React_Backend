@@ -77,8 +77,15 @@ export async function generateDonationReceiptPDF(
       const topLineY = headerY + headerY * 0.001; // move downward by 15%
       doc.moveTo(50, topLineY).lineTo(545, topLineY).stroke();
 
+      // ===== Donation Receipt Title =====
+      const receiptTitleY = topLineY + 15;
+      doc
+        .fontSize(16)
+        .fillColor("#000")
+        .text("Donation Receipt", 50, receiptTitleY, { align: "center" });
+
       // ===== Main content starts =====
-      let currentY = topLineY + 20;
+      let currentY = topLineY + 40;
       const leftX = 50;
       const rightX = 300;
 
@@ -220,54 +227,70 @@ export async function generateDonationReceiptPDF(
 
       currentY += 80;
 
-      // Gift Aid declarations
-      if (payment.donationType === "fundraising") {
-        // Add more space above for fundraising message
-        currentY += 20;
+      // Bottom line and footer - always positioned at bottom of page
+      // A4 page height is 842px, with 50px margin
+      const pageHeight = 842;
+      const bottomMargin = 50;
+      const footerTextHeight = 30; // Height for footer text (15px per line * 2)
+      const lineSpacing = 20; // Space between line and footer text
+      const giftAidSpacing = 20; // Space between Gift Aid message and line
+      
+      // Calculate fixed positions from bottom
+      const footerY = pageHeight - bottomMargin - footerTextHeight; // Footer text starts here
+      const lineY = footerY - lineSpacing; // Horizontal line above footer
+      const giftAidY = lineY - giftAidSpacing; // Gift Aid message position (above the line)
 
+      // Gift Aid declarations - positioned from bottom
+      if (payment.donationType === "fundraising") {
+        // Fundraising message - single line
         doc
           .fontSize(9)
           .text(
             "Gift Aid has not been claimed on this donation as no Gift Aid declaration was provided.",
             leftX,
-            currentY,
+            giftAidY - 12, // Position above the line (accounting for text height)
             { width: 500, align: "center" }
           );
-
-        // Position after fundraising message - add minimal gap before line
-        currentY += 15; // Small gap after the message
+      } else if (payment.companyName && payment.companyName.trim()) {
+        // Corporate donation - Gift Aid cannot be claimed
+        doc
+          .fontSize(9)
+          .text(
+            "Gift Aid cannot be claimed on this donation as it was made on behalf of a company or organisation",
+            leftX,
+            giftAidY - 12, // Position above the line (accounting for text height)
+            { width: 500, align: "center" }
+          );
       } else {
+        // Regular donation - two paragraphs
+        // Calculate position for two paragraphs above the line
+        const secondParagraphY = giftAidY - 12; // Second paragraph position
+        const firstParagraphY = secondParagraphY - 40; // First paragraph position (40px above second)
+        
         doc
           .fontSize(9)
           .text(
             "I confirm I am a UK taxpayer and understand that if I pay less Income Tax and/or Capital Gains Tax than the amount of Gift Aid claimed on all my donations in that tax year, it is my responsibility to pay the difference.",
             leftX,
-            currentY,
+            firstParagraphY,
             { width: 500, align: "center" }
           )
           .text(
             "If I pay Income Tax at the higher or additional rate, I can claim the difference between my rate and the basic rate on my Self Assessment tax return.",
             leftX,
-            currentY + 40,
+            secondParagraphY,
             { width: 500, align: "center" }
           );
-
-        // Position currentY after the second paragraph
-        // Second paragraph starts at currentY + 40, add small gap for text height and spacing
-        currentY = currentY + 40 + 20; // End of second paragraph + small gap
       }
 
-      // Bottom line after Gift Aid - draw the line at current position
+      // Draw horizontal line at fixed position
+      doc.moveTo(50, lineY).lineTo(545, lineY).stroke();
 
-      doc.moveTo(50, currentY).lineTo(545, currentY).stroke();
-
-      currentY += 20;
-
-      // Footer
+      // Footer at fixed position
       doc
         .fontSize(8)
-        .text("UK Telugu Brahmin Community", 50, currentY, { align: "center" })
-        .text("donate@uktbc.org | www.uktbc.org", 50, currentY + 15, {
+        .text("UK Telugu Brahmin Community", 50, footerY, { align: "center" })
+        .text("donate@uktbc.org | www.uktbc.org", 50, footerY + 15, {
           align: "center",
         });
 

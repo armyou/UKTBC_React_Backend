@@ -151,6 +151,8 @@ export const getDonationStats = async (): Promise<DonationStats> => {
         mobile: 1,
         amount: 1,
         donationType: 1,
+        corpDonation: 1,
+        companyName: 1,
         giftAid: 1,
         status: 1,
         createdAt: 1,

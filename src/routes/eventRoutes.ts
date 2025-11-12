@@ -41,7 +41,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
       status = 1;
     }
 
-    const preRequisites = normalizeToArray(req.body.prerequisites);
+    const preRequisites = normalizeToArray(req.body.preRequisites);
     console.log("preRequisites: ", preRequisites);
 
     const filePath = req.file ? req.file.path : "";
