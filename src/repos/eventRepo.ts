@@ -1,5 +1,5 @@
 // src/repos/eventRepo.ts
-import EventModel, { eventDocument } from "../models/events.ts";
+import EventModel, { eventDocument } from "../models/events";
 
 export class EventRepo {
   static async createEvent(data: Partial<eventDocument>) {

@@ -1,4 +1,4 @@
-import ResourcesModel, { resourcesDocument } from "../models/resources.ts";
+import ResourcesModel, { resourcesDocument } from "../models/resources";
 
 export class ResourceRepo {
   static async createResource(data: Partial<resourcesDocument>) {

@@ -1,4 +1,4 @@
-import ProjectsModel, { ProjectsDocument } from "../models/projects.ts";
+import ProjectsModel, { ProjectsDocument } from "../models/projects";
 
 export class ProjectRepo {
   static async createProject(data: Partial<ProjectsDocument>) {

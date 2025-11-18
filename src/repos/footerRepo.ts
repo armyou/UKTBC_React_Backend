@@ -1,4 +1,4 @@
-import FooterModel, { footerDocument } from "../models/footer.ts";
+import FooterModel, { footerDocument } from "../models/footer";
 
 export class FooterRepo {
   static async createFooterCount(data: Partial<footerDocument>) {
@@ -24,5 +24,8 @@ export class FooterRepo {
         upsert: true, // if no record exists, create one
       }
     );
+  }
+  static async getAll() {
+    return await FooterModel.find();
   }
 }

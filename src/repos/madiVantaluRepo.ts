@@ -1,6 +1,4 @@
-import MadiVantaluModel, {
-  madiVantaluDocument,
-} from "../models/madiVantalu.ts";
+import MadiVantaluModel, { madiVantaluDocument } from "../models/madiVantalu";
 
 export class MadiVantaluRepo {
   static async create(data: Partial<madiVantaluDocument>) {
@@ -24,6 +22,6 @@ export class MadiVantaluRepo {
     return MadiVantaluModel.findByIdAndDelete(id);
   }
   static async getLatestMadivantalu() {
-    return MadiVantaluModel.find().sort({ createdAt: -1 }).limit(3);
+    return MadiVantaluModel.find().sort({ createdAt: +1 }).limit(4);
   }
 }

@@ -1,4 +1,4 @@
-import PurohitModel, { purohitDocument } from "../models/purohit.ts";
+import PurohitModel, { purohitDocument } from "../models/purohit";
 
 export class PurohitRepo {
   static async create(data: Partial<purohitDocument>) {
@@ -22,6 +22,6 @@ export class PurohitRepo {
     return PurohitModel.findByIdAndDelete(id);
   }
   static async getLatestPurohit() {
-    return PurohitModel.find().sort({ createdAt: -1 }).limit(3);
+    return PurohitModel.find().sort({ createdAt: +1 }).limit(4);
   }
 }
