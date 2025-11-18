@@ -1,27 +1,32 @@
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import config from "../src/config.ts";
-import paymentRoutes from "./routes/paymentRoutes.ts";
+import config from "../src/config";
+import paymentRoutes from "./routes/paymentRoutes";
 import dotenv from "dotenv";
-import adminRoutes from "./routes/adminRoutes.ts";
-import eventsRoutes from "./routes/eventRoutes.ts";
-import projectsRoutes from "./routes/projectRoutes.ts";
-import resourceRoutes from "./routes/resourceRoutes.ts";
-import vipravaniRoutes from "./routes/vipravaniRoutes.ts";
-import purohitRoutes from "./routes/purohitRoutes.ts";
-import madiVantaluRoutes from "./routes/madivantaluRoutes.ts";
-import dashboardRoutes from "./routes/getDashboardData.ts";
-import servicesRoutes from "./routes/getServices.ts";
-import resourcesRoutes from "./routes/getResources.ts";
-import footerCounterRoutes from "./routes/footerCounter.ts";
+import adminRoutes from "./routes/adminRoutes";
+import eventsRoutes from "./routes/eventRoutes";
+import projectsRoutes from "./routes/projectRoutes";
+import resourceRoutes from "./routes/resourceRoutes";
+import vipravaniRoutes from "./routes/vipravaniRoutes";
+import purohitRoutes from "./routes/purohitRoutes";
+import madiVantaluRoutes from "./routes/madivantaluRoutes";
+import dashboardRoutes from "./routes/getDashboardData";
+import servicesRoutes from "./routes/getServices";
+import resourcesRoutes from "./routes/getResources";
+import footerCounterRoutes from "./routes/footerCounter";
+import hrmcRoutes from "./routes/downloadHMRCRoutes";
+import smtpweb from "./routes/smtpweb";
+import contactUsRoutes from "./routes/contactUsRoute";
+import getAllDonationsRoutes from "./routes/getAllDonationsRote";
+import getAdminDashBoardRoutes from "./routes/getadmindashboarddata";
+import paymentReceiptRoutes from "./routes/paymentRecieptRoutes";
 import morgan from "morgan";
+import path from "path";
 
 dotenv.config();
 
 const app = express();
-
-const PORT = process.env.PORT || 3040;
 
 // Middlewares
 app.use(cors());
@@ -30,6 +35,7 @@ app.use(morgan(":method :url :status :response-time ms"));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/files", express.static(path.join(process.cwd(), "assets")));
 
 // Health check route
 app.get("/", (req, res) => {
@@ -54,6 +60,12 @@ app.use("/api/web/dashboardData", dashboardRoutes);
 app.use("/api/web/services", servicesRoutes);
 app.use("/api/web/resources", resourcesRoutes);
 app.use("/api/footer", footerCounterRoutes);
+app.use("/api/hrmc", hrmcRoutes);
+app.use("/smtpweb", smtpweb);
+app.use("/api/contactUs", contactUsRoutes);
+app.use("/api/web/admin/donations", getAllDonationsRoutes);
+app.use("/api/web/admin/dashboard", getAdminDashBoardRoutes);
+app.use("/api/receipt", paymentReceiptRoutes);
 // MongoDB Connection
 mongoose
   .connect(config.mongoUri, {})
@@ -89,5 +101,6 @@ app.use((req, res) => {
 
 app.listen(config.port, () => {
   console.log(` Server is running on port ${config.port}`);
-  console.log(` API Base URL: http://localhost:3003/`);
+  // console.log(` API Base URL: http://localhost:3003/`);
+  console.log(`API Base URL: https://uktbc.jagbandhu.com/`);
 });
