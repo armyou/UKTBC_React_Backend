@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
-  const allowedTypes = /pdf|jpeg|jpg|png/; // Allow PDF + images
+  const allowedTypes = /pdf/;
   const extname = allowedTypes.test(
     path.extname(file.originalname).toLowerCase()
   );
@@ -21,11 +21,11 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
   if (extname && mimetype) {
     cb(null, true);
   } else {
-    cb(new Error("Only PDF or image files are allowed!"));
+    cb(new Error("Only PDF files are allowed!"));
   }
 };
 
-export const upload = multer({
+export default multer({
   storage,
   fileFilter,
 });
