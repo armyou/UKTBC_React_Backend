@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 export interface madiVantaluDocument extends Document {
   catererName: string;
+  contactPersonName: string;
   serviceLocations: string[];
   mobile: string;
   filePath: string;
@@ -9,6 +10,7 @@ export interface madiVantaluDocument extends Document {
 const MadiVantaluSchema = new Schema<madiVantaluDocument>(
   {
     catererName: { type: String, required: true },
+    contactPersonName: { type: String, required: true },
     serviceLocations: [{ type: String, required: true }],
     mobile: { type: String, required: true },
     filePath: { type: String, required: true },

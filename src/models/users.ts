@@ -1,12 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
-export interface resourcesDocument extends Document {
+export interface usersDocument extends Document {
   title: string;
   resourceType: string;
   filePath: string;
   previewImage: string;
   status: string;
 }
-const ResourcesSchema = new Schema<resourcesDocument>(
+const usersSchema = new Schema<usersDocument>(
   {
     title: { type: String, required: true },
     resourceType: { type: String, required: true },
@@ -16,4 +16,4 @@ const ResourcesSchema = new Schema<resourcesDocument>(
   },
   { timestamps: true }
 );
-export default mongoose.model<resourcesDocument>("resources", ResourcesSchema);
+export default mongoose.model<usersDocument>("users", usersSchema);

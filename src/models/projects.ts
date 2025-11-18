@@ -11,11 +11,13 @@ export interface Event {
 export interface ProjectsDocument extends Document {
   projectTitle: string;
   tagline: string;
+  introduction: string;
   description: string;
   vision: string;
   impactPoints: string[];
   projectType: string;
   highlights: string[];
+  benificiaries: string;
   events: Event[]; // Array of event sub-documents
   filePath: string;
   status: string;
@@ -36,11 +38,13 @@ const ProjectsSchema = new Schema<ProjectsDocument>(
   {
     projectTitle: { type: String, required: true },
     tagline: { type: String },
+    introduction: { type: String },
     description: { type: String },
     vision: { type: String },
     impactPoints: [{ type: String }],
     projectType: { type: String },
     highlights: [{ type: String }],
+    benificiaries: { type: String },
     events: [EventSchema], // Array of event objects
     filePath: { type: String },
     status: {

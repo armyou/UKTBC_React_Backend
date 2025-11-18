@@ -22,6 +22,8 @@ export interface PaymentDocument extends Document {
   stripeSessionId: string;
   paypalOrderId: string; // NEW
   status: string;
+  createdDate: string;
+  createdAt: Date;
 }
 
 const PaymentSchema = new Schema<PaymentDocument>(
@@ -56,8 +58,16 @@ const PaymentSchema = new Schema<PaymentDocument>(
     paypalOrderId: { type: String, required: false, default: "" },
 
     status: { type: String, required: true, default: "1" },
+    createdDate: { type: String, required: false },
   },
   { timestamps: true }
 );
-
+PaymentSchema.pre("save", function (next) {
+  const doc = this as any;
+  if (doc.isNew && doc.createdAt) {
+    const date = new Date(doc.createdAt);
+    this.createdDate = date.toISOString().split("T")[0]; // yyyy-mm-dd
+  }
+  next();
+});
 export default mongoose.model<PaymentDocument>("Payment", PaymentSchema);
