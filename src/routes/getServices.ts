@@ -1,41 +1,49 @@
 import { Router } from "express";
-import { fileToBase64 } from "../middleware/filetobase64converter.ts";
-import { MadiVantaluRepo } from "../repos/madiVantaluRepo.ts";
-import { PurohitRepo } from "../repos/purohitRepo.ts";
+import { fileToBase64 } from "../middleware/filetobase64converter";
+import path from "path";
+import { MadiVantaluRepo } from "../repos/madiVantaluRepo";
+import { PurohitRepo } from "../repos/purohitRepo";
 
 const router = Router();
 
 router.get("/latest", async (req, res) => {
-  // getLatestPurohit
-  // getLatestMadivantalu
   try {
+    //  Fetch latest Purohits and MadiVantalu
     const purohits = await PurohitRepo.getLatestPurohit();
     const madiVantalu = await MadiVantaluRepo.getLatestMadivantalu();
 
-    const updatedPurohits = purohits.map((purohit) => {
-      const base64File = purohit.filePath
-        ? fileToBase64(purohit.filePath)
+    //  Helper to convert local path → public URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
         : null;
+
+    //  Format purohits with public URLs
+    const updatedPurohits = purohits.map((purohit) => {
+      const obj = purohit.toObject?.() ?? purohit;
       return {
-        ...(purohit.toObject?.() ?? purohit), // handle Mongoose or plain object
-        filePath: base64File,
-      };
-    });
-    const updatedMadivantalu = madiVantalu.map((item) => {
-      const base64File = item.filePath ? fileToBase64(item.filePath) : null;
-      return {
-        ...(item.toObject?.() ?? item), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
 
+    //  Format madiVantalu with public URLs
+    const updatedMadivantalu = madiVantalu.map((item) => {
+      const obj = item.toObject?.() ?? item;
+      return {
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
+      };
+    });
+
+    //  Send response
     res.json({
       purohits: updatedPurohits,
       madiVantalu: updatedMadivantalu,
     });
   } catch (err) {
-    console.error("Error fetching events:", err);
-    res.status(500).json({ error: "Failed to fetch events" });
+    console.error("Error fetching latest purohits and madiVantalu:", err);
+    res.status(500).json({ error: "Failed to fetch latest data" });
   }
 });
 export default router;

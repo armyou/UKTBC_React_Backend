@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { ProjectRepo } from "../repos/projectRepo.ts";
-import upload from "../middleware/upload.ts";
-import { fileToBase64 } from "../middleware/filetobase64converter.ts";
+import { ProjectRepo } from "../repos/projectRepo";
+import upload from "../middleware/upload";
 import fs from "fs/promises";
 import path from "path";
 
@@ -39,8 +38,16 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
   console.log("Body: ", req.body);
   console.log("File: ", req.file);
   try {
-    const { projectTitle, tagline, description, vision, projectType, status } =
-      req.body;
+    const {
+      projectTitle,
+      tagline,
+      introduction,
+      description,
+      vision,
+      projectType,
+      benificiaries,
+      status,
+    } = req.body;
     console.log(req.body);
     const impactPoints = normalizeToArray(req.body.impactPoints);
     const highlights = normalizeToArray(req.body.highlights);
@@ -51,8 +58,10 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
     const project = await ProjectRepo.createProject({
       projectTitle,
       tagline,
+      introduction,
       description,
       vision,
+      benificiaries,
       impactPoints,
       projectType,
       highlights,
@@ -137,12 +146,12 @@ router.delete("/delete/:id", async (req, res) => {
       const filePath = path.join(process.cwd(), project.filePath);
       try {
         await fs.unlink(filePath);
-        console.log("✅ Deleted image:", filePath);
+        console.log(" Deleted image:", filePath);
       } catch (err: any) {
         if (err.code === "ENOENT") {
-          console.warn("⚠️ Image file not found, skipping:", filePath);
+          console.warn(" Image file not found, skipping:", filePath);
         } else {
-          console.error("❌ Failed to delete image:", err);
+          console.error("Failed to delete image:", err);
         }
       }
     }
@@ -165,13 +174,22 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const projects = await ProjectRepo.getAllProjects();
-    const projectsData = projects.map((list) => {
-      const base64File = list.filePath ? fileToBase64(list.filePath) : null;
+
+    // Helper to build a public file URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
+        : null;
+
+    // Map projects and replace filePath with URL
+    const projectsData = projects.map((project) => {
+      const obj = project.toObject?.() ?? project;
       return {
-        ...(list.toObject?.() ?? list), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
+
     res.json(projectsData);
   } catch (err) {
     console.error("Error fetching projects:", err);
@@ -189,17 +207,17 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Project not found" });
     }
 
-    // Convert to base64 if filePath exists
-    const base64File = project.filePath
-      ? await fileToBase64(project.filePath)
+    const obj = project.toObject?.() ?? project;
+
+    // Generate public file URL if available
+    const fileUrl = obj.filePath
+      ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
       : null;
 
-    const projectDetails = {
-      ...(project.toObject?.() ?? project), // handle Mongoose doc or plain object
-      filePath: base64File,
-    };
-
-    res.json(projectDetails);
+    res.json({
+      ...obj,
+      filePath: fileUrl,
+    });
   } catch (err) {
     console.error("Error fetching project:", err);
     res.status(500).json({ error: "Failed to fetch project" });

@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { PurohitRepo } from "../repos/purohitRepo.ts";
-import upload from "../middleware/upload.ts";
+import { PurohitRepo } from "../repos/purohitRepo";
+import upload from "../middleware/upload";
 import fs from "fs/promises";
 import path from "path";
-import { fileToBase64 } from "../middleware/filetobase64converter.ts";
 
 const router = Router();
 
@@ -60,10 +59,10 @@ router.put("/update/:id", upload.single("filePath"), async (req, res) => {
         const oldFilePath = path.join(process.cwd(), existingPurohit.filePath);
         try {
           await fs.unlink(oldFilePath);
-          console.log("✅ Deleted old file:", oldFilePath);
+          console.log(" Deleted old file:", oldFilePath);
         } catch (err: any) {
           if (err.code !== "ENOENT") {
-            console.error("❌ Failed to delete old file:", err);
+            console.error("Failed to delete old file:", err);
           }
         }
       }
@@ -97,12 +96,12 @@ router.delete("/delete/:id", async (req, res) => {
       const filePath = path.join(process.cwd(), purohit.filePath);
       try {
         await fs.unlink(filePath);
-        console.log("✅ Deleted file:", filePath);
+        console.log(" Deleted file:", filePath);
       } catch (err: any) {
         if (err.code === "ENOENT") {
-          console.warn("⚠️ File already missing, skipping:", filePath);
+          console.warn(" File already missing, skipping:", filePath);
         } else {
-          console.error("❌ Failed to delete file:", err);
+          console.error(" Failed to delete file:", err);
         }
       }
     }
@@ -125,14 +124,22 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const list = await PurohitRepo.getAll();
-    const updatedlist = list.map((item) => {
-      const base64File = item.filePath ? fileToBase64(item.filePath) : null;
+
+    const updatedList = list.map((item) => {
+      const obj = item.toObject?.() ?? item;
+
+      // Generate accessible file URL
+      const fileUrl = obj.filePath
+        ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
+        : null;
+
       return {
-        ...(item.toObject?.() ?? item), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: fileUrl,
       };
     });
-    res.json(updatedlist);
+
+    res.json(updatedList);
   } catch (err) {
     console.error("Error fetching purohits:", err);
     res.status(500).json({ error: "Failed to fetch purohit list" });

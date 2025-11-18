@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { EventRepo } from "../repos/eventRepo.ts";
-import upload from "../middleware/upload.ts";
-import { fileToBase64 } from "../middleware/filetobase64converter.ts";
+import { EventRepo } from "../repos/eventRepo";
+import upload from "../middleware/upload";
 import fs from "fs/promises";
 import path from "path";
 
@@ -29,6 +28,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
       eventName,
       startDate,
       startTime,
+      eventLocation,
       description,
       ticketPrice,
       availableTickets,
@@ -40,7 +40,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
       status = 1;
     }
 
-    const preRequisites = normalizeToArray(req.body.prerequisites);
+    const preRequisites = normalizeToArray(req.body.preRequisites);
     console.log("preRequisites: ", preRequisites);
 
     const filePath = req.file ? req.file.path : "";
@@ -49,6 +49,7 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
       eventName,
       startDate,
       startTime,
+      eventLocation,
       description,
       ticketPrice,
       availableTickets,
@@ -88,10 +89,10 @@ router.put("/update/:id", upload.single("filePath"), async (req, res) => {
         const oldFilePath = path.join(process.cwd(), existingEvent.filePath);
         try {
           await fs.unlink(oldFilePath);
-          console.log("✅ Deleted old file:", oldFilePath);
+          console.log("Deleted old file:", oldFilePath);
         } catch (err: any) {
           if (err.code !== "ENOENT") {
-            console.error("❌ Failed to delete old file:", err);
+            console.error(" Failed to delete old file:", err);
           }
         }
       }
@@ -147,10 +148,16 @@ router.get("/", async (req, res) => {
     const events = await EventRepo.getAllEvents();
 
     const updatedEvents = events.map((event) => {
-      const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+      const obj = event.toObject?.() ?? event;
+
+      // Build file URL if filePath exists
+      const fileUrl = obj.filePath
+        ? `https://${req.get("host")}/files/${path.basename(obj.filePath)}`
+        : null;
+
       return {
-        ...(event.toObject?.() ?? event), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: fileUrl,
       };
     });
 
@@ -168,20 +175,27 @@ router.get("/categorisedEvents", async (req, res) => {
     const upcomingEventsList = await EventRepo.getAllUpcomingEvents();
     const pastEventsList = await EventRepo.getAllPastEvents();
 
-    // Convert file paths to base64
+    // Helper to build file URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
+        : null;
+
+    // Map upcoming events with URLs
     const upcomingEventsData = upcomingEventsList.map((event) => {
-      const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+      const obj = event.toObject?.() ?? event;
       return {
-        ...event,
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
 
+    // Map past events with URLs
     const pastEventsData = pastEventsList.map((event) => {
-      const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+      const obj = event.toObject?.() ?? event;
       return {
-        ...event,
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
 
@@ -206,11 +220,18 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Event not found" });
     }
 
-    const base64File = event.filePath ? fileToBase64(event.filePath) : null;
+    // Build file URL using your static route
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
+        : null;
+
+    // Convert Mongoose doc if needed
+    const eventData = event.toObject?.() ?? event;
 
     res.json({
-      ...(event.toObject?.() ?? event),
-      banner: base64File,
+      ...eventData,
+      banner: buildFileUrl(eventData.filePath),
     });
   } catch (err) {
     console.error("Error fetching event:", err);

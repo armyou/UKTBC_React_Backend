@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { AdminRepo } from "../repos/adminRepo.ts";
+import { AdminRepo, getAdminProfileDetails } from "../repos/adminRepo";
+import Admin from "../models/admin";
 import jwt from "jsonwebtoken";
 
 const router = Router();
@@ -42,11 +43,69 @@ router.post("/login", async (req, res) => {
       expiresIn: "1d",
     });
 
-    res.json({ message: "Login successful", token });
+    res.json({
+      message: "Login successful",
+      token,
+      adminId: admin._id,
+      email: admin.email,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Login failed" });
   }
 });
 
+// to send admin profile details
+router.get("/profile", async (req, res) => {
+  try {
+    const adminId = req.query.adminId as string;
+
+    if (!adminId) {
+      return res.status(400).json({ message: "Admin ID is required" });
+    }
+
+    const adminDetails = await getAdminProfileDetails(adminId);
+
+    if (!adminDetails) {
+      return res.status(404).json({ message: "No Admin Found" });
+    }
+
+    return res.status(200).json({ adminDetails });
+  } catch (error) {
+    console.error("Error fetching admin profile details:", error);
+    return res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// to change admin password
+router.post("/changepassword", async (req, res) => {
+  try {
+    const { adminId, oldPassword, newPassword } = req.body;
+    console.log(adminId, oldPassword, newPassword);
+
+    if (!adminId || !oldPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    // Verify old password
+    const isMatch = await admin.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    // Update with new hashed password
+    admin.password = newPassword; // will be hashed automatically by pre-save hook
+    await admin.save();
+
+    return res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
 export default router;

@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { MadiVantaluRepo } from "../repos/madiVantaluRepo.ts";
-import upload from "../middleware/upload.ts";
-import { fileToBase64 } from "../middleware/filetobase64converter.ts";
+import { MadiVantaluRepo } from "../repos/madiVantaluRepo";
+import upload from "../middleware/upload";
 import fs from "fs/promises";
 import path from "path";
 
@@ -26,13 +25,14 @@ router.post("/add", upload.single("filePath"), async (req, res) => {
   console.log("File:", req.file);
   try {
     console.log(req.body);
-    const { catererName, mobile, status } = req.body;
+    const { catererName, mobile, status, contactPersonName } = req.body;
     const filePath = req.file ? req.file.path : "";
     const serviceLocations = normalizeToArray(req.body.serviceLocations);
     console.log("serviceLocations: ", serviceLocations);
 
     const madiVantalu = await MadiVantaluRepo.create({
       catererName,
+      contactPersonName,
       serviceLocations,
       mobile,
       filePath,
@@ -69,10 +69,10 @@ router.put("/update/:id", upload.single("filePath"), async (req, res) => {
         const oldFilePath = path.join(process.cwd(), existingCaterer.filePath);
         try {
           await fs.unlink(oldFilePath);
-          console.log("✅ Deleted old file:", oldFilePath);
+          console.log(" Deleted old file:", oldFilePath);
         } catch (err: any) {
           if (err.code !== "ENOENT") {
-            console.error("❌ Failed to delete old file:", err);
+            console.error(" Failed to delete old file:", err);
           }
         }
       }
@@ -126,17 +126,26 @@ router.delete("/delete/:id", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const lists = await MadiVantaluRepo.getAll();
+
+    //  Helper to convert local path → public URL
+    const buildFileUrl = (filePath?: string) =>
+      filePath
+        ? `https://${req.get("host")}/files/${path.basename(filePath)}`
+        : null;
+
+    //  Map MadiVantalu data with file URLs
     const madiVantalu = lists.map((list) => {
-      const base64File = list.filePath ? fileToBase64(list.filePath) : null;
+      const obj = list.toObject?.() ?? list;
       return {
-        ...(list.toObject?.() ?? list), // handle Mongoose or plain object
-        filePath: base64File,
+        ...obj,
+        filePath: buildFileUrl(obj.filePath),
       };
     });
+
     res.json(madiVantalu);
   } catch (err) {
-    console.error("Error fetching caterers:", err);
-    res.status(500).json({ error: "Failed to fetch caterers" });
+    console.error("Error fetching madi vantalu:", err);
+    res.status(500).json({ error: "Failed to fetch madi vantalu" });
   }
 });
 
